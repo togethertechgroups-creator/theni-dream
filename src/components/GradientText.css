@@ -1,0 +1,51 @@
+.gradient-text-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.gradient-text-content {
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradient-text-shift 8s linear infinite;
+  font-weight: inherit;
+}
+
+.gradient-text-border-wrap {
+  display: inline-flex;
+  padding: 1.5px;
+  border-radius: 9999px;
+  background-size: 200% auto;
+  animation: gradient-text-shift 8s linear infinite;
+}
+
+.gradient-text-border-content {
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: gradient-text-shift 8s linear infinite;
+  background-color: #000;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes gradient-text-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
