@@ -585,7 +585,5 @@ export const mockStore = {
 
   // Admin credentials management
   getAdminCredentials: () => getStoredData('td_admin_creds_v1', { email: 'admin@thenidream.com', password: 'admin' }),
-  setAdminCredentials: (creds) => setStoredData('td_admin_creds_v1', creds),
-  getAdminMobile: () => getStoredData('td_admin_mobile_v1', '9876543210'),
-  setAdminMobile: (mobile) => setStoredData('td_admin_mobile_v1', mobile)
+  setAdminCredentials: (creds) => setStoredData('td_admin_creds_v1', creds)
 };
