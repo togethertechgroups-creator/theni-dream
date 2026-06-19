@@ -35,7 +35,8 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  Settings
+  Settings,
+  Phone
 } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories, setServiceCategories } from '@/utils/servicesData';
@@ -68,12 +69,11 @@ function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = fals
 export default function AdminPage() {
   // Authentication States
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [loginMobile, setLoginMobile] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState('');
 
   // 2FA / OTP State
   const [authStep, setAuthStep] = useState('login'); // 'login' | 'otp'
@@ -96,16 +96,20 @@ export default function AdminPage() {
     e.preventDefault();
     setLoginError('');
 
-    const creds = mockStore.getAdminCredentials();
-    if (email.trim().toLowerCase() !== creds.email.toLowerCase() || password !== creds.password) {
-      setLoginError(`Invalid credentials. Hint: ${creds.email} / ${creds.password}`);
+    const adminMobile = mockStore.getAdminMobile();
+    if (loginMobile.trim() !== adminMobile) {
+      setLoginError(`Mobile number not registered. Hint: ${adminMobile}`);
       return;
     }
 
     setAuthLoading(true);
     setTimeout(() => {
       setAuthLoading(false);
+      const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(newOtp);
       setAuthStep('otp');
+      setOtpCode('');
+      showAlert(`SMS Simulation: OTP sent to +91 XXXXX XX${adminMobile.slice(-3)}. Code: ${newOtp}`, 'success');
     }, 1200);
   };
 
@@ -113,8 +117,8 @@ export default function AdminPage() {
     e.preventDefault();
     setOtpError('');
 
-    if (otpCode !== '123456') {
-      setOtpError('Invalid 2FA code. Hint: 123456');
+    if (otpCode !== generatedOtp) {
+      setOtpError('Invalid OTP code. Please check the simulated SMS toast alert.');
       return;
     }
 
@@ -143,9 +147,9 @@ export default function AdminPage() {
       () => {
         setIsAuthenticated(false);
         setAuthStep('login');
-        setEmail('');
-        setPassword('');
+        setLoginMobile('');
         setOtpCode('');
+        setGeneratedOtp('');
         setAuthSuccess(false);
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('admin_authenticated');
@@ -242,16 +246,16 @@ export default function AdminPage() {
     type: 'photo', title: '', url: '/pic/pic-1.jpeg', videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-bride-and-groom-holding-hands-outside-43229-large.mp4', dur: '3:00 Mins'
   });
 
-  // Change credentials form state
-  const [credForm, setCredForm] = useState({
-    currentEmail: '',
-    newEmail: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmNewPassword: ''
+  // Change registered mobile number form state
+  const [mobileForm, setMobileForm] = useState({
+    currentMobile: '',
+    newMobile: ''
   });
-  const [credError, setCredError] = useState('');
-  const [credSuccess, setCredSuccess] = useState('');
+  const [mobileChangeStep, setMobileChangeStep] = useState('request'); // 'request' | 'verify'
+  const [mobileChangeOtp, setMobileChangeOtp] = useState('');
+  const [generatedMobileChangeOtp, setGeneratedMobileChangeOtp] = useState('');
+  const [mobileChangeError, setMobileChangeError] = useState('');
+  const [mobileChangeSuccess, setMobileChangeSuccess] = useState('');
 
   // Package Form State
   const [editingPackageIndex, setEditingPackageIndex] = useState(-1);
@@ -1180,46 +1184,54 @@ export default function AdminPage() {
     );
   };
 
-  const handleChangeCredentials = (e) => {
+  const handleMobileChangeRequest = (e) => {
     e.preventDefault();
-    setCredError('');
-    setCredSuccess('');
+    setMobileChangeError('');
+    setMobileChangeSuccess('');
 
-    const currentCreds = mockStore.getAdminCredentials();
+    const currentMobile = mockStore.getAdminMobile();
 
-    if (credForm.currentEmail.trim().toLowerCase() !== currentCreds.email.toLowerCase()) {
-      setCredError('Incorrect current email address.');
+    if (mobileForm.currentMobile.trim() !== currentMobile) {
+      setMobileChangeError('Incorrect current mobile number.');
       return;
     }
 
-    if (credForm.currentPassword !== currentCreds.password) {
-      setCredError('Incorrect current password.');
+    if (mobileForm.newMobile.trim().length !== 10 || !/^\d+$/.test(mobileForm.newMobile.trim())) {
+      setMobileChangeError('New mobile number must be exactly 10 digits.');
       return;
     }
 
-    if (credForm.newPassword !== credForm.confirmNewPassword) {
-      setCredError('New password and confirm password do not match.');
+    if (mobileForm.newMobile.trim() === currentMobile) {
+      setMobileChangeError('New mobile number cannot be the same as the current mobile number.');
       return;
     }
 
-    if (credForm.newPassword.length < 4) {
-      setCredError('New password must be at least 4 characters long.');
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedMobileChangeOtp(otp);
+    setMobileChangeStep('verify');
+    setMobileChangeOtp('');
+    showAlert(`SMS Simulation: OTP sent to +91 XXXXX XX${mobileForm.newMobile.slice(-3)}. Code: ${otp}`, 'success');
+  };
+
+  const handleVerifyMobileChange = (e) => {
+    e.preventDefault();
+    setMobileChangeError('');
+    setMobileChangeSuccess('');
+
+    if (mobileChangeOtp !== generatedMobileChangeOtp) {
+      setMobileChangeError('Invalid verification code. Please check the simulated SMS toast alert.');
       return;
     }
 
-    mockStore.setAdminCredentials({
-      email: credForm.newEmail.trim().toLowerCase(),
-      password: credForm.newPassword
+    mockStore.setAdminMobile(mobileForm.newMobile.trim());
+    setMobileChangeSuccess('Admin registered mobile number updated successfully!');
+    setMobileForm({
+      currentMobile: '',
+      newMobile: ''
     });
-
-    setCredSuccess('Admin credentials updated successfully! Log in with your new email and password next time.');
-    setCredForm({
-      currentEmail: '',
-      newEmail: '',
-      currentPassword: '',
-      newPassword: '',
-      confirmNewPassword: ''
-    });
+    setMobileChangeStep('request');
+    setMobileChangeOtp('');
+    setGeneratedMobileChangeOtp('');
   };
 
   // --- Clean State Reset ---
@@ -1253,6 +1265,7 @@ export default function AdminPage() {
         localStorage.removeItem('td_service_categories_v2');
         localStorage.removeItem('td_portfolio');
         localStorage.removeItem('td_team');
+        localStorage.removeItem('td_admin_mobile_v1');
         await refreshData();
         showAlert('Data successfully reset to default presets!', 'warning');
       }
@@ -1297,43 +1310,23 @@ export default function AdminPage() {
                 )}
 
                 <div className="login-input-group">
-                  <label className="login-label">Email Address</label>
+                  <label className="login-label">Registered Mobile Number</label>
                   <div className="login-input-wrapper">
-                    <Mail size={18} className="login-input-icon" />
+                    <Phone size={18} className="login-input-icon" />
                     <input
-                      type="email"
+                      type="tel"
+                      maxLength={10}
                       className="login-input-control"
-                      placeholder="admin@thenidream.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                      value={loginMobile}
+                      onChange={(e) => setLoginMobile(e.target.value.replace(/\D/g, ''))}
                       required
                       disabled={authLoading}
                     />
                   </div>
-                </div>
-
-                <div className="login-input-group">
-                  <label className="login-label">Password</label>
-                  <div className="login-input-wrapper">
-                    <Lock size={18} className="login-input-icon" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      className="login-input-control"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      disabled={authLoading}
-                    />
-                    <button
-                      type="button"
-                      className="login-password-toggle"
-                      onClick={() => setShowPassword(!showPassword)}
-                      disabled={authLoading}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <span className="otp-code-hint" style={{ marginTop: '0.5rem', display: 'block', fontSize: '0.75rem', opacity: 0.8 }}>
+                    Hint: Enter the admin mobile (e.g. 9876543210)
+                  </span>
                 </div>
 
                 <div className="login-options-row">
@@ -1347,14 +1340,6 @@ export default function AdminPage() {
                     />
                     <span>Remember Me</span>
                   </label>
-                  <button
-                    type="button"
-                    className="login-forgot-link"
-                    onClick={() => alert("Password reset link has been simulated. Hint: Password is 'admin'.")}
-                    disabled={authLoading}
-                  >
-                    Forgot Password?
-                  </button>
                 </div>
 
                 <button
@@ -1365,11 +1350,11 @@ export default function AdminPage() {
                   {authLoading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
-                      <span>Authenticating...</span>
+                      <span>Requesting OTP...</span>
                     </>
                   ) : (
                     <>
-                      <span>Proceed with Login</span>
+                      <span>Request OTP Code</span>
                       <ArrowRight size={18} />
                     </>
                   )}
@@ -1398,8 +1383,8 @@ export default function AdminPage() {
                     <div className="login-input-group animate-slide-up">
                       <div className="otp-header-info">
                         <Key size={24} className="otp-info-icon" />
-                        <label className="login-label text-center">Two-Factor Authentication (OTP)</label>
-                        <p className="otp-instructions">We've simulated sending a 6-digit verification code to your device.</p>
+                        <label className="login-label text-center">Enter Verification OTP</label>
+                        <p className="otp-instructions">We've simulated sending a 6-digit OTP code to +91 XXXXX XX{mockStore.getAdminMobile().slice(-3)}.</p>
                       </div>
 
                       <div className="login-input-wrapper">
@@ -1409,14 +1394,14 @@ export default function AdminPage() {
                           maxLength={6}
                           pattern="[0-9]*"
                           className="login-input-control font-mono tracking-widest text-center text-lg"
-                          placeholder="123456"
+                          placeholder="******"
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                           required
                           disabled={authLoading}
                         />
                       </div>
-                      <span className="otp-code-hint text-center">Hint: Enter 123456</span>
+                      <span className="otp-code-hint text-center">Hint: Code is {generatedOtp} (See system toast)</span>
                     </div>
 
                     <button
@@ -1427,7 +1412,7 @@ export default function AdminPage() {
                       {authLoading ? (
                         <>
                           <Loader2 size={18} className="animate-spin" style={{ marginRight: '8px' }} />
-                          <span>Verifying Code...</span>
+                          <span>Verifying OTP...</span>
                         </>
                       ) : (
                         <>
@@ -1443,7 +1428,7 @@ export default function AdminPage() {
                       onClick={() => { setAuthStep('login'); setOtpCode(''); setOtpError(''); }}
                       disabled={authLoading}
                     >
-                      Back to Credentials
+                      Back to Mobile Number
                     </button>
                   </>
                 )}
@@ -2700,92 +2685,100 @@ export default function AdminPage() {
                   <hr className="divider" />
 
                   <div className="settings-section-card" style={{ marginBottom: '2.5rem' }}>
-                    <h4 className="form-inside-title serif-font" style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem', color: 'var(--fg-main)' }}>Change Admin Credentials</h4>
+                    <h4 className="form-inside-title serif-font" style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem', color: 'var(--fg-main)' }}>Change Registered Mobile Number</h4>
                     <p style={{ fontSize: '0.9rem', color: 'var(--fg-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
-                      Update the login email address and secure password for this administrative console.
+                      Update the registered mobile number used for logging into this administrative console. OTP verification is required.
                     </p>
 
-                    {credError && (
+                    {mobileChangeError && (
                       <div className="error-alert-box" style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.15)', color: '#dc2626', fontSize: '13.5px', marginBottom: '1.25rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <AlertCircle size={16} />
-                        <span>{credError}</span>
+                        <span>{mobileChangeError}</span>
                       </div>
                     )}
 
-                    {credSuccess && (
+                    {mobileChangeSuccess && (
                       <div className="success-alert-box" style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)', color: '#16a34a', fontSize: '13.5px', marginBottom: '1.25rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <CheckCircle size={16} />
-                        <span>{credSuccess}</span>
+                        <span>{mobileChangeSuccess}</span>
                       </div>
                     )}
 
-                    <form onSubmit={handleChangeCredentials} className="admin-form" style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div className="form-row-2">
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Current Email *</label>
-                          <input
-                            type="email"
-                            className="form-control"
-                            placeholder="Current Admin Email"
-                            value={credForm.currentEmail}
-                            onChange={(e) => setCredForm({ ...credForm, currentEmail: e.target.value })}
-                            required
-                          />
+                    {mobileChangeStep === 'request' ? (
+                      <form onSubmit={handleMobileChangeRequest} className="admin-form" style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-row-2">
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Current Mobile Number *</label>
+                            <input
+                              type="tel"
+                              maxLength={10}
+                              className="form-control"
+                              placeholder="Current Registered Mobile"
+                              value={mobileForm.currentMobile}
+                              onChange={(e) => setMobileForm({ ...mobileForm, currentMobile: e.target.value.replace(/\D/g, '') })}
+                              required
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>New Mobile Number *</label>
+                            <input
+                              type="tel"
+                              maxLength={10}
+                              className="form-control"
+                              placeholder="New Mobile Number"
+                              value={mobileForm.newMobile}
+                              onChange={(e) => setMobileForm({ ...mobileForm, newMobile: e.target.value.replace(/\D/g, '') })}
+                              required
+                            />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>New Email *</label>
-                          <input
-                            type="email"
-                            className="form-control"
-                            placeholder="New Admin Email"
-                            value={credForm.newEmail}
-                            onChange={(e) => setCredForm({ ...credForm, newEmail: e.target.value })}
-                            required
-                          />
-                        </div>
-                      </div>
 
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Current Password *</label>
-                        <input
-                          type="password"
-                          className="form-control"
-                          placeholder="Current Password"
-                          value={credForm.currentPassword}
-                          onChange={(e) => setCredForm({ ...credForm, currentPassword: e.target.value })}
-                          required
-                        />
-                      </div>
+                        <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
+                          Send Verification OTP
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleVerifyMobileChange} className="admin-form" style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div><strong>Current Mobile:</strong> {mobileForm.currentMobile}</div>
+                          <div><strong>New Mobile:</strong> {mobileForm.newMobile} (Awaiting verification)</div>
+                        </div>
 
-                      <div className="form-row-2">
                         <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>New Password *</label>
+                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Enter Verification OTP *</label>
                           <input
-                            type="password"
-                            className="form-control"
-                            placeholder="New Secure Password"
-                            value={credForm.newPassword}
-                            onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
+                            type="text"
+                            maxLength={6}
+                            className="form-control font-mono tracking-widest"
+                            placeholder="******"
+                            value={mobileChangeOtp}
+                            onChange={(e) => setMobileChangeOtp(e.target.value.replace(/\D/g, ''))}
                             required
                           />
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', display: 'block' }}>
+                            Hint: Code is {generatedMobileChangeOtp} (See system toast)
+                          </span>
                         </div>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Confirm New Password *</label>
-                          <input
-                            type="password"
-                            className="form-control"
-                            placeholder="Confirm New Password"
-                            value={credForm.confirmNewPassword}
-                            onChange={(e) => setCredForm({ ...credForm, confirmNewPassword: e.target.value })}
-                            required
-                          />
-                        </div>
-                      </div>
 
-                      <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-                        Update Credentials
-                      </button>
-                    </form>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                          <button type="submit" className="btn btn-primary">
+                            Verify & Update Mobile Number
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => {
+                              setMobileChangeStep('request');
+                              setMobileChangeOtp('');
+                              setGeneratedMobileChangeOtp('');
+                              setMobileChangeError('');
+                            }}
+                          >
+                            Back
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
 
                   <hr className="divider" style={{ margin: '2.5rem 0' }} />
