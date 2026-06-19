@@ -24,6 +24,7 @@ const YoutubeIcon = ({ size = 24 }) => (
 export default function ContactPage() {
   const [msgName, setMsgName] = useState('');
   const [msgEvent, setMsgEvent] = useState('');
+  const [msgPhone, setMsgPhone] = useState('');
   const [msgText, setMsgText] = useState('');
   const [msgSent, setMsgSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ export default function ContactPage() {
       setTimeout(() => {
         setMsgName('');
         setMsgEvent('');
+        setMsgPhone('');
         setMsgText('');
         setMsgSent(false);
       }, 3000);
@@ -211,6 +213,20 @@ export default function ContactPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="contact-msg-phone">Phone Number</label>
+                  <input
+                    type="tel"
+                    id="contact-msg-phone"
+                    className="form-control"
+                    placeholder="9876543210"
+                    value={msgPhone}
+                    onChange={(e) => setMsgPhone(e.target.value)}
+                    required
+                    disabled={loading || msgSent}
+                  />
                 </div>
 
                 <div className="form-group">
