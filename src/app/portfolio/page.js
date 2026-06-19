@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
+import { getServiceCategories } from '@/utils/servicesData';
 import { useResolvedImage } from '@/utils/indexedDBStore';
 import { fetchAlbumsSync, fetchPortfolioSync, saveAlbumSync, savePortfolioSync, deleteAlbumSync } from '@/utils/dbSync';
 import NextImage from 'next/image';
@@ -89,14 +90,14 @@ const itemVariants = {
 };
 
 export default function PortfolioPage() {
-  const categories = [
+  const [categories, setCategories] = useState([
     "All",
     "Wedding",
     "Reception",
     "Engagement",
     "Pre Wedding",
     "Events"
-  ];
+  ]);
 
   const [galleryItems, setGalleryItems] = useState([]);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -190,6 +191,41 @@ export default function PortfolioPage() {
       const generalItems = items;
       setGalleryItems(generalItems);
       setFilteredItems(generalItems);
+
+      // Dynamically compute unique categories for the filters
+      const baseCategories = ["Wedding", "Reception", "Engagement", "Pre Wedding", "Events"];
+      const svcCats = getServiceCategories();
+      
+      const rawCategories = [...baseCategories];
+      svcCats.forEach(cat => {
+        if (cat.name) rawCategories.push(cat.name);
+        if (cat.services) {
+          cat.services.forEach(svc => {
+            if (svc.name) rawCategories.push(svc.name);
+            if (svc.subServices) {
+              svc.subServices.forEach(sub => {
+                if (sub) rawCategories.push(sub);
+              });
+            }
+          });
+        }
+      });
+      
+      allAlbums.forEach(alb => {
+        if (alb.category) rawCategories.push(alb.category);
+      });
+      generalItems.forEach(item => {
+        if (item.category) rawCategories.push(item.category);
+      });
+      
+      const unique = ["All"];
+      rawCategories.forEach(cat => {
+        const trimmed = cat.trim();
+        if (trimmed && !unique.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+          unique.push(trimmed);
+        }
+      });
+      setCategories(unique);
     };
 
     loadData();

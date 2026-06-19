@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Camera } from 'lucide-react';
 import LocationIcon from '@/components/LocationIcon';
 import PhoneIcon from '@/components/PhoneIcon';
 import MailIcon from '@/components/MailIcon';
 import { usePathname } from 'next/navigation';
+import { getServiceCategories } from '@/utils/servicesData';
 
 const InstagramIcon = ({ size = 28 }) => (
   <img src="/instagram-icon.png" alt="Instagram" width={size} height={size} style={{ display: 'block', objectFit: 'contain' }} />
@@ -22,6 +24,23 @@ const YoutubeIcon = ({ size = 28 }) => (
 export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+  const [categories, setCategories] = useState([]);
+  const [activePopupId, setActivePopupId] = useState(null);
+
+  useEffect(() => {
+    setCategories(getServiceCategories());
+  }, []);
+
+  useEffect(() => {
+    if (activePopupId === null) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.footer-cat-container')) {
+        setActivePopupId(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [activePopupId]);
 
   if (pathname && pathname.startsWith('/admin')) {
     return null;
@@ -89,12 +108,100 @@ export default function Footer() {
         <div className="footer-col">
           <h4 className="footer-title">Services</h4>
           <ul className="footer-links">
-            <li><Link href="/services">Wedding Photography</Link></li>
-            <li><Link href="/services">Candid Photography</Link></li>
-            <li><Link href="/services">Cinematic Video</Link></li>
-            <li><Link href="/services">Drone Coverage</Link></li>
-            <li><Link href="/services">Baby & Maternity Shoots</Link></li>
-            <li><Link href="/services">Birthday & Corporate Events</Link></li>
+            {categories.map((cat) => (
+              <li key={cat.id} className="footer-cat-container" style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActivePopupId(activePopupId === cat.id ? null : cat.id);
+                  }}
+                  className="footer-category-link"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    width: '100%',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span>{cat.name}</span>
+                  <span style={{
+                    fontSize: '9px',
+                    opacity: 0.6,
+                    transform: activePopupId === cat.id ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.2s',
+                    display: 'inline-block'
+                  }}>▼</span>
+                </button>
+
+                {activePopupId === cat.id && (
+                  <div
+                    className="footer-dropdown-popup glass-card"
+                    style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '0',
+                      marginBottom: '10px',
+                      background: 'rgba(255, 243, 227, 0.98)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(249, 115, 22, 0.15)',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+                      zIndex: 1000,
+                      width: '250px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      textTransform: 'uppercase',
+                      color: 'var(--primary)',
+                      letterSpacing: '1px',
+                      borderBottom: '1px solid rgba(249, 115, 22, 0.15)',
+                      paddingBottom: '6px',
+                      marginBottom: '6px'
+                    }}>
+                      {cat.name} Services
+                    </div>
+                    {cat.services && cat.services.map((svc) => (
+                      <Link
+                        key={svc.id}
+                        href={`/services?cat=${cat.id}`}
+                        onClick={() => setActivePopupId(null)}
+                        style={{
+                          fontSize: '13.5px',
+                          color: '#4b5563',
+                          textDecoration: 'none',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          transition: 'all 0.2s',
+                          display: 'block',
+                          whiteSpace: 'normal',
+                          lineHeight: '1.4'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.background = 'rgba(249, 115, 22, 0.08)';
+                          e.target.style.color = 'var(--primary)';
+                          e.target.style.paddingLeft = '12px';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = 'transparent';
+                          e.target.style.color = '#4b5563';
+                          e.target.style.paddingLeft = '8px';
+                        }}
+                      >
+                        {svc.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
         </div>
 

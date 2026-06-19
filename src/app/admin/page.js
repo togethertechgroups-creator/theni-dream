@@ -266,10 +266,35 @@ export default function AdminPage() {
     { name: "Groom Portrait", url: "/pic/pic-12.png" },
     { name: "Creative Details", url: "/pic/pic-6.png" },
   ];
+  // Compute portfolio categories dynamically based on services/categories defined by the user
+  const getPortfolioCategories = () => {
+    const base = [
+      "Wedding", "Reception", "Engagement", "Pre Wedding", "Baby Shoot", "Maternity", "Events", "Drone Shots"
+    ];
+    adminCategories.forEach(cat => {
+      if (cat.name) base.push(cat.name);
+      if (cat.services) {
+        cat.services.forEach(svc => {
+          if (svc.name) base.push(svc.name);
+          if (svc.subServices) {
+            svc.subServices.forEach(sub => {
+              if (sub) base.push(sub);
+            });
+          }
+        });
+      }
+    });
+    const unique = [];
+    base.forEach(cat => {
+      const trimmed = cat.trim();
+      if (trimmed && !unique.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+        unique.push(trimmed);
+      }
+    });
+    return unique;
+  };
 
-  const portfolioCategories = [
-    "Wedding", "Reception", "Engagement", "Pre Wedding", "Baby Shoot", "Maternity", "Events", "Drone Shots"
-  ];
+  const portfolioCategories = getPortfolioCategories();
 
   // Load Initial Data
   useEffect(() => {
