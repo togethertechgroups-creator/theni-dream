@@ -34,7 +34,8 @@ import {
   CheckCircle,
   Users,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories, setServiceCategories } from '@/utils/servicesData';
@@ -1556,6 +1557,19 @@ export default function AdminPage() {
                   >
                     <LayoutDashboard size={18} />
                     <span>Manage Client Albums</span>
+                  </button>
+                  <button
+                    className={`menu-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveTab('settings');
+                      setSelectedAlbumId('');
+                      setIsEditAlbumModalOpen(false);
+                      setEditingAlbumObj(null);
+                    }}
+                    style={{ marginTop: '10px' }}
+                  >
+                    <Settings size={18} />
+                    <span>System Settings</span>
                   </button>
                   <button
                     className="menu-btn logout-btn"
