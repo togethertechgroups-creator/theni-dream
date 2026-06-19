@@ -95,8 +95,9 @@ export default function AdminPage() {
     e.preventDefault();
     setLoginError('');
 
-    if (email.trim().toLowerCase() !== 'admin@thenidream.com' || password !== 'admin') {
-      setLoginError('Invalid credentials. Hint: admin@thenidream.com / admin');
+    const creds = mockStore.getAdminCredentials();
+    if (email.trim().toLowerCase() !== creds.email.toLowerCase() || password !== creds.password) {
+      setLoginError(`Invalid credentials. Hint: ${creds.email} / ${creds.password}`);
       return;
     }
 
@@ -239,6 +240,17 @@ export default function AdminPage() {
   const [newMedia, setNewMedia] = useState({
     type: 'photo', title: '', url: '/pic/pic-1.jpeg', videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-bride-and-groom-holding-hands-outside-43229-large.mp4', dur: '3:00 Mins'
   });
+
+  // Change credentials form state
+  const [credForm, setCredForm] = useState({
+    currentEmail: '',
+    newEmail: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  });
+  const [credError, setCredError] = useState('');
+  const [credSuccess, setCredSuccess] = useState('');
 
   // Package Form State
   const [editingPackageIndex, setEditingPackageIndex] = useState(-1);
@@ -1165,6 +1177,48 @@ export default function AdminPage() {
         showAlert('Team member removed.', 'warning');
       }
     );
+  };
+
+  const handleChangeCredentials = (e) => {
+    e.preventDefault();
+    setCredError('');
+    setCredSuccess('');
+
+    const currentCreds = mockStore.getAdminCredentials();
+
+    if (credForm.currentEmail.trim().toLowerCase() !== currentCreds.email.toLowerCase()) {
+      setCredError('Incorrect current email address.');
+      return;
+    }
+
+    if (credForm.currentPassword !== currentCreds.password) {
+      setCredError('Incorrect current password.');
+      return;
+    }
+
+    if (credForm.newPassword !== credForm.confirmNewPassword) {
+      setCredError('New password and confirm password do not match.');
+      return;
+    }
+
+    if (credForm.newPassword.length < 4) {
+      setCredError('New password must be at least 4 characters long.');
+      return;
+    }
+
+    mockStore.setAdminCredentials({
+      email: credForm.newEmail.trim().toLowerCase(),
+      password: credForm.newPassword
+    });
+
+    setCredSuccess('Admin credentials updated successfully! Log in with your new email and password next time.');
+    setCredForm({
+      currentEmail: '',
+      newEmail: '',
+      currentPassword: '',
+      newPassword: '',
+      confirmNewPassword: ''
+    });
   };
 
   // --- Clean State Reset ---
@@ -2630,6 +2684,97 @@ export default function AdminPage() {
                   </p>
 
                   <hr className="divider" />
+
+                  <div className="settings-section-card" style={{ marginBottom: '2.5rem' }}>
+                    <h4 className="form-inside-title serif-font" style={{ fontSize: '18px', fontWeight: '700', marginBottom: '1rem', color: 'var(--fg-main)' }}>Change Admin Credentials</h4>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--fg-muted)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                      Update the login email address and secure password for this administrative console.
+                    </p>
+
+                    {credError && (
+                      <div className="error-alert-box" style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.15)', color: '#dc2626', fontSize: '13.5px', marginBottom: '1.25rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <AlertCircle size={16} />
+                        <span>{credError}</span>
+                      </div>
+                    )}
+
+                    {credSuccess && (
+                      <div className="success-alert-box" style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)', color: '#16a34a', fontSize: '13.5px', marginBottom: '1.25rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <CheckCircle size={16} />
+                        <span>{credSuccess}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleChangeCredentials} className="admin-form" style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Current Email *</label>
+                          <input
+                            type="email"
+                            className="form-control"
+                            placeholder="Current Admin Email"
+                            value={credForm.currentEmail}
+                            onChange={(e) => setCredForm({ ...credForm, currentEmail: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>New Email *</label>
+                          <input
+                            type="email"
+                            className="form-control"
+                            placeholder="New Admin Email"
+                            value={credForm.newEmail}
+                            onChange={(e) => setCredForm({ ...credForm, newEmail: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Current Password *</label>
+                        <input
+                          type="password"
+                          className="form-control"
+                          placeholder="Current Password"
+                          value={credForm.currentPassword}
+                          onChange={(e) => setCredForm({ ...credForm, currentPassword: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>New Password *</label>
+                          <input
+                            type="password"
+                            className="form-control"
+                            placeholder="New Secure Password"
+                            value={credForm.newPassword}
+                            onChange={(e) => setCredForm({ ...credForm, newPassword: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontWeight: '600', color: 'var(--fg-muted)', fontSize: '13px' }}>Confirm New Password *</label>
+                          <input
+                            type="password"
+                            className="form-control"
+                            placeholder="Confirm New Password"
+                            value={credForm.confirmNewPassword}
+                            onChange={(e) => setCredForm({ ...credForm, confirmNewPassword: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
+                        Update Credentials
+                      </button>
+                    </form>
+                  </div>
+
+                  <hr className="divider" style={{ margin: '2.5rem 0' }} />
 
                   <div className="settings-section-card">
                     <h4 className="form-inside-title">Database Cleanup & Reset</h4>

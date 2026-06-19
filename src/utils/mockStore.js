@@ -581,5 +581,9 @@ export const mockStore = {
 
     return stored;
   },
-  setTeam: (team) => setStoredData('td_team', team)
+  setTeam: (team) => setStoredData('td_team', team),
+
+  // Admin credentials management
+  getAdminCredentials: () => getStoredData('td_admin_creds_v1', { email: 'admin@thenidream.com', password: 'admin' }),
+  setAdminCredentials: (creds) => setStoredData('td_admin_creds_v1', creds)
 };
