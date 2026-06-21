@@ -206,7 +206,13 @@ export default function ServicesPage() {
                       <ScrollReveal key={service.id} animation="fade-up" delay={idx * 100}>
                         <div className="service-card glass-card etech-curve" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <div className="service-img-box">
-                            <SafeImage src={imageUrl} alt={service.name} className="service-img" isThumbnail={true} />
+                            <SafeImage 
+                              src={imageUrl} 
+                              alt={service.name} 
+                              className="service-img" 
+                              style={service.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
+                              isThumbnail={true} 
+                            />
                             {service.price && (
                               <div className="price-tag">
                                 <span className="price-start">Starts from </span>₹{service.price}

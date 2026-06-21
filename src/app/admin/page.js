@@ -3500,13 +3500,14 @@ export default function AdminPage() {
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                   {[
                     { name: "Wedding", path: "/pic/services/wedding.png" },
-                    { name: "Candid", path: "/pic/services/candid.png" },
-                    { name: "Traditional", path: "/pic/services/traditional.png" },
+                    { name: "Candid", path: "/pic/services/candid_v2.png" },
+                    { name: "Traditional", path: "/pic/services/traditional_v2.jpg" },
                     { name: "Drone", path: "/pic/services/drone.png" },
                     { name: "Cinematic", path: "/pic/services/cinematic.png" },
-                    { name: "Maternity", path: "/pic/services/maternity.png" },
+                    { name: "Maternity", path: "/pic/services/maternity_v2.png" },
                     { name: "Puberty", path: "/pic/services/puberty.png" },
-                    { name: "Baby", path: "/pic/services/baby.png" },
+                    { name: "Baby", path: "/pic/services/baby_v3.png" },
+                    { name: "Model", path: "/pic/services/model_v2.png" },
                     { name: "Events", path: "/pic/services/events.png" }
                   ].map(img => (
                     <button

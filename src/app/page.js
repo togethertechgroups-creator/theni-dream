@@ -425,6 +425,7 @@ export default function Home() {
                     src={getOptimizedServiceImage(selectedService, selectedService.image)}
                     alt={selectedService.name}
                     className="marquee-modal-image"
+                    style={selectedService.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
                     width={400}
                     height={500}
                   />

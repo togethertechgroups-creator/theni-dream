@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle, ChevronDown } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories } from '@/utils/servicesData';
 import { useResolvedImage } from '@/utils/indexedDBStore';
@@ -89,7 +89,36 @@ const itemVariants = {
   }
 };
 
+const matchCategory = (itemCat, activeCat) => {
+  if (!itemCat || !activeCat) return false;
+  const item = itemCat.trim().toLowerCase();
+  const active = activeCat.trim().toLowerCase();
+
+  if (active === 'all') return true;
+
+  if (active === 'baby photography') {
+    return item === 'baby photography' || item === 'baby shoot';
+  }
+  if (active === 'maternity') {
+    return item === 'maternity' || item === 'maternity photography';
+  }
+  if (active === 'model') {
+    return item === 'model' || item === 'model photography';
+  }
+
+  return item === active;
+};
+
 export default function PortfolioPage() {
+  const WEDDING_CATEGORIES = [
+    "Wedding", "Wedding Event", "Traditional Photography", "Traditional Videography",
+    "Candid Photography", "Candid Videography", "Drone Coverage", "Cinematic Videos",
+    "360 Selfie Booth", "Instant Photo Booth", "LED Wall Setup", "Outdoor Shoots",
+    "Pre - Wedding Shoots", "Post - Wedding Shoots", "Pre-Wedding Shoots", "Post-Wedding Shoots",
+    "Pre Wedding"
+  ];
+  const MAIN_BUTTONS = ["All", "Reception", "Engagement", "Maternity", "Model", "Baby Photography"];
+
   const [categories, setCategories] = useState([
     "All",
     "Wedding",
@@ -98,6 +127,8 @@ export default function PortfolioPage() {
     "Pre Wedding",
     "Events"
   ]);
+  const [weddingDropdownOpen, setWeddingDropdownOpen] = useState(false);
+  const [othersDropdownOpen, setOthersDropdownOpen] = useState(false);
 
   const [galleryItems, setGalleryItems] = useState([]);
   const [activeCategory, setActiveCategory] = useState("All");
@@ -125,6 +156,18 @@ export default function PortfolioPage() {
           await deleteAlbumSync('dream2026');
           const updatedAlbums = await fetchAlbumsSync();
           allAlbums = updatedAlbums.albums || [];
+        }
+
+        // Clean up legacy/misplaced photos in dpg_diya_model_og in D1 database
+        const d1DiyaAlbum = allAlbums.find(a => a.id === 'dpg_diya_model_og');
+        if (d1DiyaAlbum && d1DiyaAlbum.photos && (d1DiyaAlbum.photos.length !== 7 || d1DiyaAlbum.photos.some(p => p.url.includes('048') || p.url.includes('Karthi')))) {
+          console.log("Migrating 'dpg_diya_model_og' album in D1 database...");
+          const correctDiya = mockStore.getAlbums().find(a => a.id === 'dpg_diya_model_og');
+          if (correctDiya) {
+            await saveAlbumSync(correctDiya);
+            const updatedAlbums = await fetchAlbumsSync();
+            allAlbums = updatedAlbums.albums || [];
+          }
         }
 
         // Seed any missing default albums
@@ -169,6 +212,17 @@ export default function PortfolioPage() {
           items = updatedPort.portfolio || [];
         }
 
+        // Clean up legacy misplaced Diya model portfolio items in D1 database
+        const diyaMisplaced = items.filter(p => p.albumId === 'dpg_diya_model_og' && (p.image.includes('048') || p.image.includes('Karthi') || p.id > 135));
+        if (diyaMisplaced.length > 0) {
+          console.log("Cleaning misplaced Diya model portfolio items from D1...");
+          for (const item of diyaMisplaced) {
+            await deletePortfolioSync(item.id);
+          }
+          const updatedPort = await fetchPortfolioSync();
+          items = updatedPort.portfolio || [];
+        }
+
         // Seed any missing default portfolio items
         const defaults = mockStore.getPortfolio();
         let seededNew = false;
@@ -195,7 +249,7 @@ export default function PortfolioPage() {
       // Dynamically compute unique categories for the filters
       const baseCategories = ["Wedding", "Reception", "Engagement", "Pre Wedding", "Events"];
       const svcCats = getServiceCategories();
-      
+
       const rawCategories = [...baseCategories];
       svcCats.forEach(cat => {
         if (cat.name) rawCategories.push(cat.name);
@@ -210,14 +264,14 @@ export default function PortfolioPage() {
           });
         }
       });
-      
+
       allAlbums.forEach(alb => {
         if (alb.category) rawCategories.push(alb.category);
       });
       generalItems.forEach(item => {
         if (item.category) rawCategories.push(item.category);
       });
-      
+
       const unique = ["All"];
       rawCategories.forEach(cat => {
         const trimmed = cat.trim();
@@ -237,7 +291,7 @@ export default function PortfolioPage() {
     if (activeCategory === "All") {
       setFilteredItems(galleryItems);
     } else {
-      setFilteredItems(galleryItems.filter(item => item.category === activeCategory));
+      setFilteredItems(galleryItems.filter(item => matchCategory(item.category, activeCategory)));
     }
   }, [activeCategory, galleryItems]);
 
@@ -305,6 +359,46 @@ export default function PortfolioPage() {
     e.preventDefault();
   };
 
+  // Close dropdowns on click outside
+  useEffect(() => {
+    if (!weddingDropdownOpen && !othersDropdownOpen) return;
+    const handleOutsideClick = (event) => {
+      if (!event.target.closest('.filter-dropdown-container')) {
+        setWeddingDropdownOpen(false);
+        setOthersDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [weddingDropdownOpen, othersDropdownOpen]);
+
+  // Compute Wedding dropdown categories (dynamically matched from all available categories)
+  const weddingDropdownCategories = categories.filter(
+    cat => WEDDING_CATEGORIES.some(w => w.toLowerCase() === cat.trim().toLowerCase())
+  );
+
+  // Compute Others dropdown categories (anything not All, Reception, Engagement, Pre Wedding, Events, and not a Wedding sub-category)
+  const othersDropdownCategories = categories.filter(
+    cat => {
+      const trimmed = cat.trim().toLowerCase();
+      const EXCLUDED_OTHERS = ["baby shoot", "maternity photography", "model photography"];
+      return (
+        trimmed !== 'all' &&
+        !MAIN_BUTTONS.some(m => m.toLowerCase() === trimmed) &&
+        !WEDDING_CATEGORIES.some(w => w.toLowerCase() === trimmed) &&
+        !EXCLUDED_OTHERS.includes(trimmed)
+      );
+    }
+  );
+
+  const isWeddingActive = WEDDING_CATEGORIES.some(
+    cat => cat.toLowerCase() === activeCategory.trim().toLowerCase()
+  );
+
+  const isOthersActive = othersDropdownCategories.some(
+    cat => cat.toLowerCase() === activeCategory.trim().toLowerCase()
+  );
+
   return (
     <div className="portfolio-page-wrapper" onContextMenu={handleContextMenu}>
       {/* 1. Portfolio Header */}
@@ -325,15 +419,112 @@ export default function PortfolioPage() {
           <>
             {/* Categories Selector */}
             <div className="category-filter-bar">
-              {categories.map((cat) => (
+              {/* 1. All Button */}
+              <button
+                className={`filter-btn ${activeCategory.toLowerCase() === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveCategory('All');
+                  setWeddingDropdownOpen(false);
+                  setOthersDropdownOpen(false);
+                }}
+              >
+                All
+              </button>
+
+              {/* 2. Wedding Dropdown */}
+              {weddingDropdownCategories.length > 0 && (
+                <div className="filter-dropdown-container">
+                  <button
+                    className={`filter-btn dropdown-toggle ${isWeddingActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setWeddingDropdownOpen(!weddingDropdownOpen);
+                      setOthersDropdownOpen(false);
+                    }}
+                  >
+                    <span>{isWeddingActive ? activeCategory : 'Wedding'}</span>
+                    <ChevronDown size={14} className="dropdown-arrow" style={{ transform: weddingDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                  </button>
+                  <AnimatePresence>
+                    {weddingDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10, x: '-50%' }}
+                        animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10, x: '-50%' }}
+                        transition={{ duration: 0.15 }}
+                        className="filter-dropdown-menu glass-card"
+                      >
+                        {weddingDropdownCategories.map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => {
+                              setActiveCategory(cat);
+                              setWeddingDropdownOpen(false);
+                            }}
+                            className={`dropdown-item-btn ${activeCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* 3. Main Buttons (Reception, Engagement, Pre Wedding, Events) */}
+              {MAIN_BUTTONS.filter(btn => btn.toLowerCase() !== 'all').map((cat) => (
                 <button
                   key={cat}
-                  className={`filter-btn ${activeCategory === cat ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat)}
+                  className={`filter-btn ${activeCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveCategory(cat);
+                    setWeddingDropdownOpen(false);
+                    setOthersDropdownOpen(false);
+                  }}
                 >
                   {cat}
                 </button>
               ))}
+
+              {/* 4. Others Dropdown */}
+              {othersDropdownCategories.length > 0 && (
+                <div className="filter-dropdown-container">
+                  <button
+                    className={`filter-btn dropdown-toggle ${isOthersActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setOthersDropdownOpen(!othersDropdownOpen);
+                      setWeddingDropdownOpen(false);
+                    }}
+                  >
+                    <span>{isOthersActive ? activeCategory : 'Others'}</span>
+                    <ChevronDown size={14} className="dropdown-arrow" style={{ transform: othersDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+                  </button>
+                  <AnimatePresence>
+                    {othersDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10, x: '-50%' }}
+                        animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10, x: '-50%' }}
+                        transition={{ duration: 0.15 }}
+                        className="filter-dropdown-menu glass-card"
+                      >
+                        {othersDropdownCategories.map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => {
+                              setActiveCategory(cat);
+                              setOthersDropdownOpen(false);
+                            }}
+                            className={`dropdown-item-btn ${activeCategory.toLowerCase() === cat.toLowerCase() ? 'active' : ''}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             {/* Layout Mode Switcher */}
@@ -417,9 +608,9 @@ export default function PortfolioPage() {
                         }}
                       >
                         {/* Blurred background glow */}
-                        <div 
-                          className="card-blur-bg" 
-                          style={{ backgroundImage: `url(${item.image})` }} 
+                        <div
+                          className="card-blur-bg"
+                          style={{ backgroundImage: `url(${item.image})` }}
                         />
 
                         {/* Visual Protective Overlay */}
@@ -466,7 +657,7 @@ export default function PortfolioPage() {
                 {albums.filter(album => {
                   if (album.albumType === 'client') return false;
                   const cat = album.category || "Wedding";
-                  return activeCategory === "All" || cat.toLowerCase() === activeCategory.toLowerCase();
+                  return matchCategory(cat, activeCategory);
                 }).length === 0 ? (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0', color: 'var(--fg-muted)' }}>
                     <p>No album collections found in this category.</p>
@@ -476,7 +667,7 @@ export default function PortfolioPage() {
                     .filter(album => {
                       if (album.albumType === 'client') return false;
                       const cat = album.category || "Wedding";
-                      return activeCategory === "All" || cat.toLowerCase() === activeCategory.toLowerCase();
+                      return matchCategory(cat, activeCategory);
                     })
                     .map((album) => {
                       const coverImage = album.photos && album.photos.length > 0 ? album.photos[0].url : '/pic/pic-6.jpeg';
@@ -1051,6 +1242,61 @@ export default function PortfolioPage() {
           .album-modal-title {
             font-size: 24px;
           }
+        }
+
+        /* ── Dropdown Category Filter Styles ── */
+        .filter-dropdown-container {
+          position: relative;
+          display: inline-block;
+        }
+        .dropdown-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .dropdown-arrow {
+          display: inline-block;
+          opacity: 0.7;
+        }
+        .filter-dropdown-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 50%;
+          min-width: 240px;
+          max-width: 280px;
+          max-height: 280px;
+          overflow-y: auto;
+          background-color: #ffffff;
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.03);
+          z-index: 1000;
+          padding: 6px 0;
+          display: flex;
+          flex-direction: column;
+          scrollbar-width: thin;
+        }
+        .dropdown-item-btn {
+          width: 100%;
+          text-align: left;
+          padding: 10px 16px;
+          background: none;
+          border: none;
+          font-family: inherit;
+          font-size: 13.5px;
+          font-weight: 500;
+          color: var(--fg-muted);
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .dropdown-item-btn:hover {
+          color: var(--primary);
+          background-color: var(--primary-bg-light);
+        }
+        .dropdown-item-btn.active {
+          color: var(--primary);
+          background-color: var(--primary-bg-light);
+          font-weight: 600;
         }
       `}</style>
     </div>

@@ -362,6 +362,7 @@ export default function ServicesSection({ services }) {
                     src={getOptimizedServiceImage(service, service.image)}
                     alt={service.name}
                     className="sticky-stacked-image"
+                    style={service.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
                     width={500}
                     height={600}
                   />
@@ -425,7 +426,14 @@ function MobileServiceCard({ service, index, activeMobileAudioId, handleMobileSo
     <div className="services-mobile-card glass-card" ref={cardRef}>
       <div className="mobile-card-image-wrapper">
         {/* Always show the photo; audio plays separately */}
-        <Image src={getOptimizedServiceImage(service, service.image)} alt={service.name} className="mobile-card-img" width={340} height={220} />
+        <Image 
+          src={getOptimizedServiceImage(service, service.image)} 
+          alt={service.name} 
+          className="mobile-card-img" 
+          style={service.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
+          width={340} 
+          height={220} 
+        />
         {service.video && (
           <button
             className={`mobile-sound-btn ${isCurrentPlaying ? 'sound-on' : ''}`}

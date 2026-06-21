@@ -11,7 +11,13 @@ const TARGET_DIRS = [
   'public/ajith-lavanaya',
   'public/ajith-lavanya',
   'public/dpg-karthi-sasi',
-  'public/dpg-mani-sharmi'
+  'public/dpg-mani-sharmi',
+  'public/dpg-mathan-uma-prewedding',
+  'public/dpg-vicky-gowsi-m2',
+  'public/dpg-prasanth-gayathri-maternity-05',
+  'public/dpg-deepz-beauty-05',
+  'public/dpg-deepz-beauty-01',
+  'public/dpg-diya-model-og'
 ];
 
 async function compressImage(filePath) {

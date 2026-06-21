@@ -1,9 +1,16 @@
 // Config file for managing high-quality service image assets on both homepage and services page.
 export const SERVICES_IMAGES_CONFIG = {
-  maternity: '/pic/services/maternity.png',
-  baby: '/pic/services/baby.png',
+  maternity: '/maternity-vinoth/dpg_vinoth_maternity_17.jpg',
+  baby: '/pic/services/baby_v3.png',
   birthday: '/pic/services/birthday.png',
-  corporate: '/pic/services/corporate.png'
+  corporate: '/pic/services/corporate.png',
+  model: '/pic/services/model_v2.png',
+  'pre-wedding': '/pic/services/pre-wedding_v2.png',
+  'post-wedding': '/pic/services/post-wedding_v2.png',
+  'traditional': '/pic/services/traditional_v2.jpg',
+  'traditional-photo': '/pic/services/traditional_v2.jpg',
+  'candid': '/pic/services/candid_v2.png',
+  'candid-photo': '/pic/services/candid_v2.png'
 };
 
 /**
@@ -34,6 +41,21 @@ export function getOptimizedServiceImage(service, originalImage) {
   if (name.includes('corporate events') || name.includes('corporate shoot') || name === 'corporate') {
     return SERVICES_IMAGES_CONFIG['corporate'];
   }
-
+  if (name.includes('model shoot') || name.includes('model photography') || name === 'model' || name === 'model-shoot') {
+    return SERVICES_IMAGES_CONFIG['model'];
+  }
+  if (name.includes('pre wedding') || name.includes('pre-wedding') || name === 'pre-wedding') {
+    return SERVICES_IMAGES_CONFIG['pre-wedding'];
+  }
+  if (name.includes('post wedding') || name.includes('post-wedding') || name === 'post-wedding') {
+    return SERVICES_IMAGES_CONFIG['post-wedding'];
+  }
+  if (name.includes('traditional photography') || name.includes('traditional photo') || name === 'traditional' || name === 'traditional-photo') {
+    return SERVICES_IMAGES_CONFIG['traditional'];
+  }
+  if (name.includes('candid photography') || name.includes('candid photo') || name === 'candid' || name === 'candid-photo') {
+    return SERVICES_IMAGES_CONFIG['candid'];
+  }
+  
   return originalImage;
 }
