@@ -236,6 +236,8 @@ export default function AdminPage() {
   });
   const [newAlbumPhotosFiles, setNewAlbumPhotosFiles] = useState([]);
   const [newMediaFiles, setNewMediaFiles] = useState([]);
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaUploadedCount, setMediaUploadedCount] = useState(0);
 
   // Media Form State
   const [newMedia, setNewMedia] = useState({
@@ -860,30 +862,43 @@ export default function AdminPage() {
             return;
           }
         }
-        // Upload multiple files
-        for (let i = 0; i < newMediaFiles.length; i++) {
-          const file = newMediaFiles[i];
-          const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
-          const thumbBlob = await createThumbnailBlob(file);
+        
+        setMediaUploading(true);
+        setMediaUploadedCount(0);
+        
+        try {
+          // Upload multiple files
+          for (let i = 0; i < newMediaFiles.length; i++) {
+            const file = newMediaFiles[i];
+            const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
+            const thumbBlob = await createThumbnailBlob(file);
 
-          const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-          const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+            const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+            const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
 
-          if (originalUpload.configured && thumbUpload.configured) {
-            updatedPhotos.push({
-              id: startId + i,
-              title: file.name.split('.')[0],
-              url: originalUpload.url
-            });
-          } else {
-            await saveMediaBlob(id, file);
-            await saveMediaBlob(`${id}_thumb`, thumbBlob);
-            updatedPhotos.push({
-              id: startId + i,
-              title: file.name.split('.')[0],
-              url: `indexeddb://${id}`
-            });
+            if (originalUpload.configured && thumbUpload.configured) {
+              updatedPhotos.push({
+                id: startId + i,
+                title: file.name.split('.')[0],
+                url: originalUpload.url
+              });
+            } else {
+              await saveMediaBlob(id, file);
+              await saveMediaBlob(`${id}_thumb`, thumbBlob);
+              updatedPhotos.push({
+                id: startId + i,
+                title: file.name.split('.')[0],
+                url: `indexeddb://${id}`
+              });
+            }
+            setMediaUploadedCount(i + 1);
           }
+        } catch (err) {
+          console.error('Error uploading media files:', err);
+          showAlert('Failed to upload some files. Please try again.', 'danger');
+        } finally {
+          setMediaUploading(false);
+          setMediaUploadedCount(0);
         }
       } else {
         // Upload single preset or custom URL
@@ -1725,6 +1740,7 @@ export default function AdminPage() {
                                 <select
                                   className="form-control"
                                   value={newMedia.type}
+                                  disabled={mediaUploading}
                                   onChange={(e) => setNewMedia({ ...newMedia, type: e.target.value })}
                                   style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
                                 >
@@ -1739,6 +1755,7 @@ export default function AdminPage() {
                                   className="form-control"
                                   placeholder="e.g. Ring Exchange"
                                   value={newMedia.title}
+                                  disabled={mediaUploading}
                                   onChange={(e) => setNewMedia({ ...newMedia, title: e.target.value })}
                                   style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
                                 />
@@ -1755,6 +1772,7 @@ export default function AdminPage() {
                                         type="button"
                                         key={i}
                                         className={`preset-img-btn ${newMedia.url === img.url ? 'active' : ''}`}
+                                        disabled={mediaUploading}
                                         onClick={() => setNewMedia({ ...newMedia, url: img.url })}
                                         style={{ height: '54px', borderRadius: '6px' }}
                                       >
@@ -1770,6 +1788,7 @@ export default function AdminPage() {
                                     className="form-control"
                                     placeholder="Custom Photo URL (e.g. /pic/pic-1.jpeg)"
                                     value={newMedia.url}
+                                    disabled={mediaUploading}
                                     onChange={(e) => setNewMedia({ ...newMedia, url: e.target.value })}
                                     style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
                                   />
@@ -1780,6 +1799,7 @@ export default function AdminPage() {
                                     accept="image/*"
                                     multiple
                                     className="form-control"
+                                    disabled={mediaUploading}
                                     onChange={(e) => {
                                       const files = Array.from(e.target.files);
                                       if (activeAlbumObj && activeAlbumObj.albumType === 'client') {
@@ -1800,6 +1820,35 @@ export default function AdminPage() {
                                     }}
                                     style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
                                   />
+
+                                  {mediaUploading && (
+                                    <div style={{
+                                      marginTop: '12px',
+                                      padding: '12px',
+                                      borderRadius: '8px',
+                                      background: 'rgba(255, 122, 0, 0.08)',
+                                      border: '1px solid rgba(255, 122, 0, 0.2)',
+                                      color: 'var(--primary)',
+                                      fontSize: '0.9rem',
+                                      fontWeight: '500'
+                                    }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span>Uploading Images...</span>
+                                        <span>{newMediaFiles.length > 0 ? Math.round((mediaUploadedCount / newMediaFiles.length) * 100) : 0}%</span>
+                                      </div>
+                                      <div style={{ width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{
+                                          width: `${newMediaFiles.length > 0 ? (mediaUploadedCount / newMediaFiles.length) * 100 : 0}%`,
+                                          height: '100%',
+                                          background: 'var(--primary)',
+                                          transition: 'width 0.2s ease-out'
+                                        }} />
+                                      </div>
+                                      <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#6b7280', textAlign: 'center' }}>
+                                        Uploaded: {mediaUploadedCount} / {newMediaFiles.length} images
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="video-uploader-controls" style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1810,6 +1859,7 @@ export default function AdminPage() {
                                       className="form-control"
                                       placeholder="MP4 video URL"
                                       value={newMedia.videoUrl}
+                                      disabled={mediaUploading}
                                       onChange={(e) => setNewMedia({ ...newMedia, videoUrl: e.target.value })}
                                       style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
                                     />
@@ -1821,6 +1871,7 @@ export default function AdminPage() {
                                       className="form-control"
                                       placeholder="e.g. 3:15 Mins"
                                       value={newMedia.dur}
+                                      disabled={mediaUploading}
                                       onChange={(e) => setNewMedia({ ...newMedia, dur: e.target.value })}
                                       style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
                                     />
@@ -1828,8 +1879,32 @@ export default function AdminPage() {
                                 </div>
                               )}
 
-                              <button type="submit" className="btn btn-secondary btn-block" style={{ marginTop: '1.25rem', height: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <Upload size={16} /> Link & Upload Media
+                              <button 
+                                type="submit" 
+                                className="btn btn-secondary btn-block" 
+                                disabled={mediaUploading}
+                                style={{ 
+                                  marginTop: '1.25rem', 
+                                  height: '44px', 
+                                  borderRadius: '10px', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  gap: '0.5rem',
+                                  opacity: mediaUploading ? 0.7 : 1,
+                                  cursor: mediaUploading ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                {mediaUploading ? (
+                                  <>
+                                    <Loader2 className="animate-spin" size={16} />
+                                    Uploading: {mediaUploadedCount} / {newMediaFiles.length} images...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload size={16} /> Link & Upload Media
+                                  </>
+                                )}
                               </button>
                             </form>
                           </div>
