@@ -30,37 +30,30 @@ export default function ServicesSection({ services }) {
     activeMobileAudioIdRef.current = activeMobileAudioId;
   }, [activeMobileAudioId]);
 
-  // Viewport visibility observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSectionVisible(entry.isIntersecting);
-      },
-      {
-        threshold: 0.1, // Trigger if 10% visible
-      }
-    );
+  // Section visibility is managed dynamically by GSAP ScrollTrigger on desktop,
+  // and by individual card visibility observers on mobile.
 
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => {
-      if (containerRef.current) {
-        observer.unobserve(containerRef.current);
-      }
-    };
-  }, []);
 
   const playAudio = (url) => {
     const audio = globalAudioRef.current;
     if (!audio) return;
     try {
-      // Pause and reset previous audio
+      const currentSrc = audio.src || '';
+      const isSameSrc = currentSrc.endsWith(url);
+
+      if (isSameSrc && !audio.paused) {
+        return;
+      }
+
+      if (isSameSrc) {
+        audio.play().catch((err) => {
+          console.warn("Audio playback blocked or interrupted:", err);
+        });
+        return;
+      }
+
       audio.pause();
       audio.currentTime = 0;
-
-      // Load new source and play
       audio.src = url;
       audio.load();
       audio.play().catch((err) => {
@@ -95,13 +88,16 @@ export default function ServicesSection({ services }) {
   const toggleSound = () => {
     const newSoundOn = !isSoundOn;
     setIsSoundOn(newSoundOn);
+    if (newSoundOn) {
+      setIsSectionVisible(true);
+    }
 
     // Reset mobile sound toggle state
     setActiveMobileAudioId(null);
 
     const displayServices = services.slice(0, 6);
 
-    if (newSoundOn && isSectionVisible) {
+    if (newSoundOn) {
       const activeService = displayServices[activeIdxRef.current];
       if (activeService && activeService.video) {
         playAudio(activeService.video);
@@ -203,6 +199,9 @@ export default function ServicesSection({ services }) {
           end: `+=${window.innerHeight * (totalCards - 1)}`,
           pin: true,
           scrub: 0.5,
+          onToggle: (self) => {
+            setIsSectionVisible(self.isActive);
+          },
           onUpdate: (self) => {
             // Sync text column dynamically with scrub progress
             const newIdx = Math.round(self.progress * (totalCards - 1));
@@ -426,13 +425,13 @@ function MobileServiceCard({ service, index, activeMobileAudioId, handleMobileSo
     <div className="services-mobile-card glass-card" ref={cardRef}>
       <div className="mobile-card-image-wrapper">
         {/* Always show the photo; audio plays separately */}
-        <Image 
-          src={getOptimizedServiceImage(service, service.image)} 
-          alt={service.name} 
-          className="mobile-card-img" 
+        <Image
+          src={getOptimizedServiceImage(service, service.image)}
+          alt={service.name}
+          className="mobile-card-img"
           style={service.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
-          width={340} 
-          height={220} 
+          width={340}
+          height={220}
         />
         {service.video && (
           <button

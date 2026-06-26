@@ -183,7 +183,7 @@ const DEFAULT_SERVICES = [
     price: "45,000",
     desc: "Complete coverage of pre-wedding, wedding rituals, and reception. Combines traditional coverage with premium candid photography.",
     image: "/pic/70678.jpg",
-    video: "/wedding-bgm.mp4",
+    video: "/wedding-bgm.m4a",
     features: ["2 Senior Photographers", "High-Resolution Edited Digital Files", "Luxury Glass/Acrylic Album", "Full Day Coverage"]
   },
   {
@@ -192,7 +192,7 @@ const DEFAULT_SERVICES = [
     price: "25,000",
     desc: "Focuses strictly on natural, unposed expressions, capturing laughter, emotional tears, and quick raw gestures invisibly.",
     image: "/pic/services/candid_v2.png",
-    video: "/candid-bgm.mp4",
+    video: "/candid-bgm.m4a",
     features: ["1 Dedicated Candid Artist", "Emotion-first grading style", "Edited digital deliverables", "Timeline consultations"]
   },
   {
@@ -201,7 +201,7 @@ const DEFAULT_SERVICES = [
     price: "18,000",
     desc: "Structured stage photography, group portrait shots, and formal coverage focusing on ceremony events and guests.",
     image: "/pic/services/traditional_v2.jpg",
-    video: "/traditional-bgm.mp4",
+    video: "/traditional-bgm.m4a",
     features: ["1 Senior Traditional Expert", "Complete stage guest archive", "Standard glossy print book", "Full ceremony focus"]
   },
   {
@@ -210,7 +210,7 @@ const DEFAULT_SERVICES = [
     price: "35,000",
     desc: "Stunning filmic video capturing wedding reels, cinematic teasers (2-3 mins), and a full wedding film (15-20 mins) with high-end audio recording.",
     image: "/pic/70235.jpg",
-    video: "/cinematic-bgm.mp4",
+    video: "/cinematic-bgm.m4a",
     features: ["2 Videographers with Gimbal systems", "Custom cinematic color grading", "High-fidelity audio recording", "Instagram teaser reels"]
   },
   {
@@ -219,7 +219,7 @@ const DEFAULT_SERVICES = [
     price: "15,000",
     desc: "High-definition aerial views, dramatic landscape setups, and bird's-eye footage of wedding entryways and outdoor events.",
     image: "/pic/70181.jpg",
-    video: "/drone-bgm.mp4",
+    video: "/drone-bgm.m4a",
     features: ["1 Licensed Drone Pilot", "4K Ultra-HD footage", "Aerial group layouts", "Stunning venue panorama shots"]
   },
   {
@@ -228,7 +228,7 @@ const DEFAULT_SERVICES = [
     price: "20,000",
     desc: "Romantic, conceptual photoshoots at premium locations. Ideal for save-the-date cards, visual invitations, and banner images.",
     image: "/pic/services/pre-wedding_v2.png",
-    video: "/pre-wedding-bgm.mp4",
+    video: "/pre-wedding-bgm.m4a",
     features: ["Half-day outdoor session", "2 Costume changes supported", "30 Fine-art edited frames", "Digital Invitation slide design"]
   },
   {
@@ -786,6 +786,11 @@ export const mockStore = {
       const def = DEFAULT_SERVICES.find(d => d.id === s.id);
       if (def) {
         if (def.video && !s.video) {
+          s.video = def.video;
+          updated = true;
+        }
+        // Migrate cached .mp4 URLs to .m4a
+        if (s.video && s.video.endsWith('.mp4') && def.video) {
           s.video = def.video;
           updated = true;
         }
