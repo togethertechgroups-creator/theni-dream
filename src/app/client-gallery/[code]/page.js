@@ -8,6 +8,22 @@ import { Download, CheckCircle2, ChevronLeft, ChevronRight, X, AlertCircle, Home
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import JSZip from 'jszip';
+import { useResolvedImage } from '@/utils/indexedDBStore';
+
+function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
+  const resolved = useResolvedImage(src, isThumbnail);
+  return (
+    <img
+      src={resolved}
+      alt={alt}
+      className={className}
+      style={style}
+      onDragStart={onDragStart}
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
 
 export default function ClientGalleryPage() {
   const params = useParams();
@@ -350,12 +366,12 @@ export default function ClientGalleryPage() {
                   onClick={() => openLightbox(idx)}
                   onContextMenu={handleContextMenu}
                 >
-                  <img
+                  <SafeImage
                     src={photo.url}
                     alt={photo.title || `Photo ${idx + 1}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onDragStart={handleDragStart}
-                    loading="lazy"
+                    isThumbnail={true}
                   />
                   
                   {/* Selection Overlay */}
@@ -431,11 +447,12 @@ export default function ClientGalleryPage() {
               key={lightboxActiveIndex}
               style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}
             >
-              <img
+              <SafeImage
                 src={lightboxImagesList[lightboxActiveIndex].url}
                 alt={lightboxImagesList[lightboxActiveIndex].title || 'Photo'}
                 style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', userSelect: 'none' }}
                 onDragStart={handleDragStart}
+                isThumbnail={false}
               />
               
               <div style={{ position: 'absolute', bottom: '-50px', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
