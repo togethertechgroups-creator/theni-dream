@@ -8,7 +8,7 @@ import { Download, CheckCircle2, ChevronLeft, ChevronRight, X, AlertCircle, Home
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import JSZip from 'jszip';
-import { useResolvedImage } from '@/utils/indexedDBStore';
+import { useResolvedImage, getMediaBlob } from '@/utils/indexedDBStore';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
   const resolved = useResolvedImage(src, isThumbnail);
@@ -118,9 +118,22 @@ export default function ClientGalleryPage() {
   // Download Individual Image
   const downloadImage = async (url, title) => {
     try {
-      const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
-      const blob = await response.blob();
+      let blob;
+      if (url.startsWith('indexeddb://')) {
+        const id = url.replace('indexeddb://', '');
+        blob = await getMediaBlob(id);
+        if (!blob) {
+          throw new Error('Image not found in local IndexedDB');
+        }
+      } else {
+        const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to download: status ${response.status}`);
+        }
+        blob = await response.blob();
+      }
+
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -147,11 +160,24 @@ export default function ClientGalleryPage() {
 
       const promises = photosToDownload.map(async (photo, idx) => {
         try {
-          const proxyUrl = `/api/download?url=${encodeURIComponent(photo.url)}`;
-          const response = await fetch(proxyUrl);
-          const blob = await response.blob();
-          const filename = `${photo.title || `photo_${idx + 1}`}.jpg`;
-          zip.file(filename, blob);
+          let blob;
+          if (photo.url.startsWith('indexeddb://')) {
+            const id = photo.url.replace('indexeddb://', '');
+            blob = await getMediaBlob(id);
+          } else {
+            const proxyUrl = `/api/download?url=${encodeURIComponent(photo.url)}`;
+            const response = await fetch(proxyUrl);
+            if (response.ok) {
+              blob = await response.blob();
+            }
+          }
+
+          if (blob) {
+            const filename = `${photo.title || `photo_${idx + 1}`}.jpg`;
+            zip.file(filename, blob);
+          } else {
+            console.error(`Failed to retrieve blob for ${photo.url}`);
+          }
           
           completed++;
           setDownloadProgress(Math.round((completed / total) * 100));
