@@ -189,6 +189,7 @@ export default function AdminPage() {
   const [selectedCatId, setSelectedCatId] = useState('');
   const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [catServiceImageFile, setCatServiceImageFile] = useState(null);
+  const [catServiceVideoFile, setCatServiceVideoFile] = useState(null);
 
   // Team Form State
   const [isTeamFormOpen, setIsTeamFormOpen] = useState(false);
@@ -506,6 +507,18 @@ export default function AdminPage() {
       }
     }
 
+    let finalVideoUrl = editingCatSvc.video || '';
+    if (catServiceVideoFile) {
+      const id = `user_uploaded_${Date.now()}_svc_vid_${Math.random().toString(36).substr(2, 9)}`;
+      const originalUpload = await uploadImageSync(catServiceVideoFile, `${id}.mp4`);
+      if (originalUpload.configured) {
+        finalVideoUrl = originalUpload.url;
+      } else {
+        await saveMediaBlob(id, catServiceVideoFile);
+        finalVideoUrl = `indexeddb://${id}`;
+      }
+    }
+
     const updated = adminCategories.map(cat => {
       if (cat.id === selectedCatId) {
         let updatedServices = [];
@@ -515,6 +528,7 @@ export default function AdminPage() {
             name: editingCatSvc.name,
             price: editingCatSvc.price,
             image: finalImageUrl || '/pic/services/events.png',
+            video: finalVideoUrl,
             desc: editingCatSvc.desc || '',
             ...(subServices.length > 0 ? { subServices } : {})
           };
@@ -527,6 +541,7 @@ export default function AdminPage() {
                 name: editingCatSvc.name,
                 price: editingCatSvc.price,
                 image: finalImageUrl,
+                video: finalVideoUrl,
                 desc: editingCatSvc.desc || '',
                 ...(subServices.length > 0 ? { subServices } : {})
               };
@@ -544,6 +559,7 @@ export default function AdminPage() {
     setIsCatSvcFormOpen(false);
     setEditingCatSvc(null);
     setCatServiceImageFile(null);
+    setCatServiceVideoFile(null);
     showAlert(editingCatSvc.isNew ? 'New service added successfully.' : 'Service details updated successfully.');
   };
 
@@ -553,9 +569,11 @@ export default function AdminPage() {
       ...svc,
       isNew: false,
       desc: svc.desc || '',
+      video: svc.video || '',
       subServicesText: svc.subServices ? svc.subServices.join('\n') : ''
     });
     setCatServiceImageFile(null);
+    setCatServiceVideoFile(null);
     setIsCatSvcFormOpen(true);
   };
 
@@ -566,11 +584,13 @@ export default function AdminPage() {
       name: '',
       price: '',
       image: '/pic/services/events.png',
+      video: '',
       desc: '',
       subServicesText: '',
       isNew: true
     });
     setCatServiceImageFile(null);
+    setCatServiceVideoFile(null);
     setIsCatSvcFormOpen(true);
   };
 
@@ -3516,11 +3536,11 @@ export default function AdminPage() {
 
       {/* Service Modal Form */}
       {isCatSvcFormOpen && editingCatSvc && (
-        <div className="modal-backdrop" onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); }}>
+        <div className="modal-backdrop" onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); setCatServiceVideoFile(null); }}>
           <div className="modal-container glass-card etech-curve" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title serif-font">{editingCatSvc.isNew ? 'Add New Service' : 'Edit Service Details'}</h3>
-              <button className="modal-close-btn" onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); }}>
+              <button className="modal-close-btn" onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); setCatServiceVideoFile(null); }}>
                 <X size={18} />
               </button>
             </div>
@@ -3614,6 +3634,34 @@ export default function AdminPage() {
               </div>
 
               <div className="form-group">
+                <label className="form-label">Video Stream URL / Path</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. /video.mp4 or YouTube/Vimeo/Cloudflare URL"
+                  value={editingCatSvc.video || ''}
+                  onChange={(e) => setEditingCatSvc({ ...editingCatSvc, video: e.target.value })}
+                  style={{ height: '40px', borderRadius: '8px', padding: '0 12px', width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Or Upload Custom Service Video</label>
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="form-control"
+                  onChange={(e) => setCatServiceVideoFile(e.target.files[0])}
+                  style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
+                />
+                {catServiceVideoFile && (
+                  <div style={{ marginTop: '10px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Selected: {catServiceVideoFile.name}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Sub-services (one per line or separated by commas)</label>
                 <textarea
                   className="form-control"
@@ -3631,7 +3679,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   className="btn btn-outline btn-block"
-                  onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); }}
+                  onClick={() => { setIsCatSvcFormOpen(false); setEditingCatSvc(null); setCatServiceImageFile(null); setCatServiceVideoFile(null); }}
                 >
                   Cancel
                 </button>

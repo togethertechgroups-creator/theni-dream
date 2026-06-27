@@ -38,17 +38,29 @@ export default function ContactPage() {
     e.preventDefault();
     setLoading(true);
 
+    const messageText = `*New Inquiry from Theni Dream Photography*
+
+*Name:* ${msgName}
+*Event/Service:* ${msgEvent}
+*Phone:* ${msgPhone}
+*Message:* ${msgText}`;
+
+    const encodedMessage = encodeURIComponent(messageText);
+    const whatsappUrl = `https://wa.me/919854002628?text=${encodedMessage}`;
+
+    // Open WhatsApp in a new tab
+    window.open(whatsappUrl, '_blank');
+
+    setLoading(false);
+    setMsgSent(true);
+
     setTimeout(() => {
-      setLoading(false);
-      setMsgSent(true);
-      setTimeout(() => {
-        setMsgName('');
-        setMsgEvent('');
-        setMsgPhone('');
-        setMsgText('');
-        setMsgSent(false);
-      }, 3000);
-    }, 1200);
+      setMsgName('');
+      setMsgEvent('');
+      setMsgPhone('');
+      setMsgText('');
+      setMsgSent(false);
+    }, 3000);
   };
 
   return (

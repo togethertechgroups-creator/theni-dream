@@ -166,3 +166,29 @@ export function useResolvedImage(url, isThumbnail = false) {
   return resolvedUrl;
 }
 
+export function useResolvedVideo(url) {
+  const [resolvedUrl, setResolvedUrl] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    if (url && url.startsWith('indexeddb://')) {
+      resolveImageUrl(url, false).then(resolved => {
+        if (active) {
+          if (resolved === '/pic/70231.jpg') {
+            setResolvedUrl('');
+          } else {
+            setResolvedUrl(resolved);
+          }
+        }
+      });
+    } else {
+      setResolvedUrl(url || '');
+    }
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  return resolvedUrl;
+}
+

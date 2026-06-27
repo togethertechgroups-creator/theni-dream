@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Camera, Check, ArrowRight } from 'lucide-react';
-import { useResolvedImage } from '@/utils/indexedDBStore';
+import { Camera, Check, ArrowRight, Play, X } from 'lucide-react';
+import { useResolvedImage, useResolvedVideo } from '@/utils/indexedDBStore';
 import ScrollReveal from '@/components/ScrollReveal';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
 import { getServiceCategories } from '@/utils/servicesData';
@@ -38,9 +38,70 @@ function SafeImage({ src, alt, className, style, isThumbnail = false }) {
   );
 }
 
+function VideoPlayOverlay({ videoUrl, onPlay }) {
+  const resolvedVideo = useResolvedVideo(videoUrl);
+
+  if (!resolvedVideo) return null;
+
+  return (
+    <div 
+      className="video-play-overlay"
+      onClick={(e) => {
+        e.stopPropagation();
+        onPlay(resolvedVideo);
+      }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0, 0, 0, 0.2)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        zIndex: 2
+      }}
+    >
+      <div 
+        className="play-icon-circle"
+        style={{
+          width: '54px',
+          height: '54px',
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.25)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.15)';
+          e.currentTarget.style.background = 'var(--primary)';
+          e.currentTarget.style.borderColor = 'var(--primary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+        }}
+      >
+        <Play size={22} fill="currentColor" style={{ marginLeft: '3px' }} />
+      </div>
+    </div>
+  );
+}
+
 export default function ServicesPage() {
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [activeVideoUrl, setActiveVideoUrl] = useState(null);
 
   const urlSearch = typeof window !== 'undefined' ? window.location.search : '';
 
@@ -213,6 +274,9 @@ export default function ServicesPage() {
                               style={service.id === 'baby' ? { objectPosition: 'center 30%' } : {}}
                               isThumbnail={true} 
                             />
+                            {service.video && (
+                              <VideoPlayOverlay videoUrl={service.video} onPlay={setActiveVideoUrl} />
+                            )}
                             {service.price && (
                               <div className="price-tag">
                                 <span className="price-start">Starts from </span>₹{service.price}
@@ -260,6 +324,78 @@ export default function ServicesPage() {
             ))}
         </div>
       </section>
+
+      {activeVideoUrl && (
+        <div 
+          className="video-modal-backdrop"
+          onClick={() => setActiveVideoUrl(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+        >
+          <div 
+            className="video-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '800px',
+              backgroundColor: '#000',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <button 
+              onClick={() => setActiveVideoUrl(null)}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'rgba(0, 0, 0, 0.5)',
+                border: 'none',
+                color: '#fff',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 10,
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.8)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.5)'}
+            >
+              <X size={20} />
+            </button>
+            <video 
+              src={activeVideoUrl}
+              controls
+              autoPlay
+              style={{
+                width: '100%',
+                display: 'block',
+                maxHeight: '75vh',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
