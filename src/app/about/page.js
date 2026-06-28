@@ -156,8 +156,8 @@ export default function AboutPage() {
             <ScrollReveal animation="fade-right" delay={150}>
               <div className="values-visual">
                 <div className="image-grid-2x2">
-                  <img src="/pic/pic-6.png" alt="Wedding detail" className="grid-img-1 etech-curve" />
-                  <img src="/pic/pic-12.png" alt="Couple smile" className="grid-img-2 etech-curve" />
+                  <img src="/pic/hema-bride.jpeg" alt="Wedding detail" className="grid-img-1 etech-curve" />
+                  <img src="/pic/santhosh-ananthi.jpeg" alt="Couple smile" className="grid-img-2 etech-curve" />
                 </div>
               </div>
             </ScrollReveal>
