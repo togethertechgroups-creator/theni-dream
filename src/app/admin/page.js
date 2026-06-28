@@ -2336,7 +2336,7 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p style={{ margin: 0, fontWeight: '700', color: '#374151', fontSize: '0.95rem' }}>Drag and drop images here, or click to browse</p>
-                            <p style={{ margin: '0.25rem 0 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>Supports PNG, JPG, JPEG up to 20 MB each</p>
+                            <p style={{ margin: '0.25rem 0 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>Supports PNG, JPG, JPEG up to 10 MB each</p>
                           </div>
                         </div>
                       </div>
