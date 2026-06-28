@@ -126,12 +126,22 @@ export default function ClientGalleryPage() {
           throw new Error('Image not found in local IndexedDB');
         }
       } else {
-        const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to download: status ${response.status}`);
+        // Try fetching directly first to save Vercel origin bandwidth
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Direct download status ${response.status}`);
+          }
+          blob = await response.blob();
+        } catch (directErr) {
+          console.warn('Direct download failed, falling back to Vercel proxy. Please enable CORS on your R2 bucket.', directErr);
+          const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
+          const response = await fetch(proxyUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to download: status ${response.status}`);
+          }
+          blob = await response.blob();
         }
-        blob = await response.blob();
       }
 
       const blobUrl = window.URL.createObjectURL(blob);
@@ -165,10 +175,21 @@ export default function ClientGalleryPage() {
             const id = photo.url.replace('indexeddb://', '');
             blob = await getMediaBlob(id);
           } else {
-            const proxyUrl = `/api/download?url=${encodeURIComponent(photo.url)}`;
-            const response = await fetch(proxyUrl);
-            if (response.ok) {
-              blob = await response.blob();
+            // Try fetching directly first to save Vercel origin bandwidth
+            try {
+              const response = await fetch(photo.url);
+              if (response.ok) {
+                blob = await response.blob();
+              } else {
+                throw new Error(`Direct download status ${response.status}`);
+              }
+            } catch (directErr) {
+              console.warn('Direct download failed, falling back to Vercel proxy. Please enable CORS on your R2 bucket.', directErr);
+              const proxyUrl = `/api/download?url=${encodeURIComponent(photo.url)}`;
+              const response = await fetch(proxyUrl);
+              if (response.ok) {
+                blob = await response.blob();
+              }
             }
           }
 
