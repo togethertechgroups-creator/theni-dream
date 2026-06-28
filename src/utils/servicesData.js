@@ -4,7 +4,7 @@ const DEFAULT_CATEGORIES = [
     name: "Wedding Event",
     desc: "Grand cinematic and traditional coverages for your wedding celebrations.",
     price: "40,000",
-    image: "/pic/services/wedding.png",
+    image: "/pic/services/santhosh-ananthi-wedding.jpeg",
     services: [
       { id: "traditional-photo", name: "Traditional Photography", price: "18,000", image: "/pic/services/traditional_v2.jpg" },
       { id: "traditional-video", name: "Traditional Videography", price: "18,000", image: "/pic/services/cinematic.png" },
@@ -22,7 +22,7 @@ const DEFAULT_CATEGORIES = [
     name: "Outdoor Shoots",
     desc: "Pre-wedding and post-wedding outdoor couple shoots in scenic spots.",
     price: "15,000",
-    image: "/pic/services/outdoor.png",
+    image: "/pic/services/subash-madhu-outdoor.jpeg",
     services: [
       { id: "pre-wedding", name: "Pre - Wedding Shoots", price: "20,000", image: "/pic/services/pre-wedding_v2.png" },
       { id: "post-wedding", name: "Post - Wedding Shoots", price: "15,000", image: "/pic/services/post-wedding_v2.png" }
@@ -67,6 +67,16 @@ export const getServiceCategories = () => {
     let parsed = JSON.parse(data);
     let migrated = false;
     parsed = parsed.map(cat => {
+      // Migrate category main images if they are using the old defaults
+      if (cat.id === 'wedding-event' && (cat.image === '/pic/services/wedding.png' || !cat.image)) {
+        cat.image = '/pic/services/santhosh-ananthi-wedding.jpeg';
+        migrated = true;
+      }
+      if (cat.id === 'outdoor' && (cat.image === '/pic/services/outdoor.png' || !cat.image)) {
+        cat.image = '/pic/services/subash-madhu-outdoor.jpeg';
+        migrated = true;
+      }
+
       if (cat.services) {
         cat.services = cat.services.map(svc => {
           if (svc.id === 'baby' && (svc.image === '/pic/services/baby.png' || svc.image === '/pic/services/baby_v2.png')) {
