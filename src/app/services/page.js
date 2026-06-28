@@ -102,7 +102,6 @@ export default function ServicesPage() {
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeVideoUrl, setActiveVideoUrl] = useState(null);
-  const [isAllServicesModalOpen, setIsAllServicesModalOpen] = useState(false);
 
   const urlSearch = typeof window !== 'undefined' ? window.location.search : '';
 
@@ -186,32 +185,14 @@ export default function ServicesPage() {
             {/* All Services Card */}
             <ScrollReveal animation="fade-up" delay={0}>
               <div 
-                className="category-selector-card glass-card etech-curve"
-                onClick={() => setIsAllServicesModalOpen(true)}
+                className={`category-selector-card glass-card etech-curve ${activeCategory === 'all' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('all')}
                 style={{ cursor: 'pointer', height: '100%' }}
               >
-                <div className="category-img-box" style={{ 
-                  background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.2) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
-                }}>
-                  <div style={{
-                    width: '74px',
-                    height: '74px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    boxShadow: '0 8px 24px rgba(249, 115, 22, 0.3)'
-                  }}>
-                    <Camera size={34} strokeWidth={1.5} />
-                  </div>
-                  <div className="price-tag" style={{ background: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(4px)' }}>
-                    Full List
+                <div className="category-img-box">
+                  <SafeImage src="/pic/services/events.png" alt="All Services" className="category-img" isThumbnail={true} />
+                  <div className="price-tag">
+                    Full Showcase
                   </div>
                 </div>
                 <div className="category-body">
@@ -413,181 +394,6 @@ export default function ServicesPage() {
               }}
             />
           </div>
-        </div>
-      )}
-
-      {isAllServicesModalOpen && (
-        <div 
-          className="all-services-modal-backdrop"
-          onClick={() => setIsAllServicesModalOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px'
-          }}
-        >
-          <div 
-            className="all-services-modal-content glass-card etech-curve"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: '650px',
-              maxHeight: '85vh',
-              backgroundColor: '#121212',
-              borderRadius: '24px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              animation: 'modalFadeIn 0.3s ease-out'
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '25px 30px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              position: 'relative'
-            }}>
-              <div>
-                <span className="section-tag" style={{ margin: 0, fontSize: '11px', padding: '3px 8px' }}>Complete Menu</span>
-                <h2 className="serif-font" style={{ fontSize: '24px', fontWeight: '700', color: 'var(--fg-main)', margin: '5px 0 0 0' }}>
-                  Our <span className="gradient-text">Specialty Services</span>
-                </h2>
-              </div>
-              <button 
-                onClick={() => setIsAllServicesModalOpen(false)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'var(--fg-main)',
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--primary)';
-                  e.currentTarget.style.color = '#fff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  e.currentTarget.style.color = 'var(--fg-main)';
-                }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="custom-scrollbar" style={{
-              padding: '30px',
-              overflowY: 'auto',
-              flexGrow: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '24px'
-            }}>
-              {categories.map((cat) => (
-                <div key={cat.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <h3 className="serif-font" style={{ 
-                    fontSize: '17px', 
-                    fontWeight: '700', 
-                    color: 'var(--primary)', 
-                    borderBottom: '1px solid rgba(249, 115, 22, 0.2)',
-                    paddingBottom: '6px',
-                    margin: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <Camera size={16} />
-                    {cat.name}
-                  </h3>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '10px 20px'
-                  }}>
-                    {cat.services && cat.services.map((svc) => (
-                      <div key={svc.id} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '6px 10px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(255, 255, 255, 0.04)'
-                      }}>
-                        <span style={{ fontSize: '13.5px', color: 'var(--fg-main)', fontWeight: '500' }}>
-                          {svc.name}
-                        </span>
-                        <span style={{ fontSize: '12.5px', color: 'var(--fg-muted)', fontWeight: '600' }}>
-                          ₹{svc.price}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Modal Footer */}
-            <div style={{
-              padding: '20px 30px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(0, 0, 0, 0.2)',
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <Link 
-                href="/contact" 
-                onClick={() => setIsAllServicesModalOpen(false)}
-                className="btn btn-primary"
-                style={{ borderRadius: '30px', padding: '10px 24px' }}
-              >
-                Book a Session
-              </Link>
-            </div>
-          </div>
-          
-          <style jsx>{`
-            @keyframes modalFadeIn {
-              from { opacity: 0; transform: scale(0.95); }
-              to { opacity: 1; transform: scale(1); }
-            }
-            .custom-scrollbar::-webkit-scrollbar {
-              width: 6px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-              background: rgba(255, 255, 255, 0.02);
-              border-radius: 3px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(255, 255, 255, 0.1);
-              border-radius: 3px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: rgba(255, 255, 255, 0.2);
-            }
-          `}</style>
         </div>
       )}
     </div>
