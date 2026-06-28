@@ -2,6 +2,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SmoothScrollProvider from "@/components/SmoothScrollProvider";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "Theni Dream Photography - Capturing Your Beautiful Moments",
@@ -21,7 +22,9 @@ export default function RootLayout({ children }) {
             <Footer />
           </div>
         </SmoothScrollProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
 }
+
