@@ -754,12 +754,12 @@ export default function AdminPage() {
 
   const handleClientFileChange = (e) => {
     const files = Array.from(e.target.files);
-    const maxSize = 20 * 1024 * 1024; // 20 MB limit
+    const maxSize = 10 * 1024 * 1024; // 10 MB limit
     const invalidFiles = files.filter(f => f.size > maxSize);
 
     if (invalidFiles.length > 0) {
       const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-      showAlert(`Error: Image file size must be under 20 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+      showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
       e.target.value = null;
       setClientFiles([]);
       return;
@@ -874,11 +874,11 @@ export default function AdminPage() {
 
       if (newMediaFiles && newMediaFiles.length > 0) {
         if (album.albumType === 'client') {
-          const maxSize = 20 * 1024 * 1024;
+          const maxSize = 10 * 1024 * 1024;
           const invalidFiles = newMediaFiles.filter(f => f.size > maxSize);
           if (invalidFiles.length > 0) {
             const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-            showAlert(`Error: Image file size must be under 20 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+            showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
             return;
           }
         }
@@ -1823,11 +1823,11 @@ export default function AdminPage() {
                                     onChange={(e) => {
                                       const files = Array.from(e.target.files);
                                       if (activeAlbumObj && activeAlbumObj.albumType === 'client') {
-                                        const maxSize = 20 * 1024 * 1024;
+                                        const maxSize = 10 * 1024 * 1024;
                                         const invalidFiles = files.filter(f => f.size > maxSize);
                                         if (invalidFiles.length > 0) {
                                           const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-                                          showAlert(`Error: Image file size must be under 20 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+                                          showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
                                           e.target.value = null;
                                           setNewMediaFiles([]);
                                           return;
@@ -2283,7 +2283,7 @@ export default function AdminPage() {
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label" style={{ fontWeight: '600', color: '#374151', display: 'flex', justifyContents: 'space-between', justifyContent: 'space-between' }}>
                         <span>Upload Client Images *</span>
-                        <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '500' }}>Strict Limit: Max 20 MB per image</span>
+                        <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '500' }}>Strict Limit: Max 10 MB per image</span>
                       </label>
 
                       {/* Dropzone container */}
@@ -2302,11 +2302,11 @@ export default function AdminPage() {
                         onDrop={(e) => {
                           e.preventDefault();
                           const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                          const maxSize = 20 * 1024 * 1024;
+                          const maxSize = 10 * 1024 * 1024;
                           const invalidFiles = files.filter(f => f.size > maxSize);
                           if (invalidFiles.length > 0) {
                             const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-                            showAlert(`Error: The following file(s) exceed the 20 MB limit and were rejected: ${names}`, 'danger');
+                            showAlert(`Error: The following file(s) exceed the 10 MB limit and were rejected: ${names}`, 'danger');
                             return;
                           }
                           setClientFiles(files);
