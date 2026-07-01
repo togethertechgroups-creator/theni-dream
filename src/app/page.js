@@ -313,6 +313,9 @@ export default function Home() {
               <Link href="/portfolio" className="btn btn-hero-primary">
                 View Portfolio <ArrowUpRight size={16} />
               </Link>
+              <Link href="/packages" className="btn btn-hero-secondary">
+                Packages
+              </Link>
               <Link href="/contact" className="btn btn-hero-secondary">
                 Book a Shoot
               </Link>
