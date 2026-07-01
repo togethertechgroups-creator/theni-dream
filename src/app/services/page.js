@@ -43,14 +43,19 @@ function SafeImage({ src, alt, className, style, isThumbnail = false }) {
 function VideoPlayOverlay({ videoUrl, onPlay }) {
   const resolvedVideo = useResolvedVideo(videoUrl);
 
-  if (!resolvedVideo) return null;
+  if (!videoUrl) return null;
 
   return (
     <div 
       className="video-play-overlay"
       onClick={(e) => {
         e.stopPropagation();
-        onPlay(resolvedVideo);
+        onPlay(resolvedVideo || videoUrl);
+      }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onPlay(resolvedVideo || videoUrl);
       }}
       style={{
         position: 'absolute',
@@ -399,6 +404,7 @@ export default function ServicesPage() {
               src={activeVideoUrl}
               controls
               autoPlay
+              playsInline
               style={{
                 width: '100%',
                 display: 'block',

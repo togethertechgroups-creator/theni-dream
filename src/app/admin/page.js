@@ -172,6 +172,8 @@ export default function AdminPage() {
 
 
   const [activeTab, setActiveTab] = useState('galleries');
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const [previewPage, setPreviewPage] = useState('/');
 
   // Data States
   const [albums, setAlbums] = useState([]);
@@ -1927,6 +1929,41 @@ export default function AdminPage() {
                     <span>Manage Services</span>
                   </button>
                 </nav>
+              </div>
+
+              {/* Mobile Preview Section */}
+              <div className="sidebar-menu-section" style={{ marginTop: '20px', borderTop: '1px solid rgba(249,115,22,0.2)', paddingTop: '16px' }}>
+                <h5 className="sidebar-menu-category">📱 Mobile Preview</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { label: 'Home', path: '/' },
+                    { label: 'Services', path: '/services' },
+                    { label: 'Portfolio', path: '/portfolio' },
+                    { label: 'Packages', path: '/packages' },
+                    { label: 'About', path: '/about' },
+                    { label: 'Contact', path: '/contact' },
+                  ].map(p => (
+                    <button
+                      key={p.path}
+                      className={`menu-btn ${previewPage === p.path && showMobilePreview ? 'active' : ''}`}
+                      style={{ fontSize: '0.82rem', padding: '7px 12px', background: previewPage === p.path && showMobilePreview ? 'rgba(249,115,22,0.15)' : 'transparent' }}
+                      onClick={() => { setPreviewPage(p.path); setShowMobilePreview(true); }}
+                    >
+                      <Eye size={14} />
+                      <span>{p.label}</span>
+                    </button>
+                  ))}
+                  {showMobilePreview && (
+                    <button
+                      className="menu-btn"
+                      style={{ color: '#ef4444', fontSize: '0.82rem', padding: '7px 12px' }}
+                      onClick={() => setShowMobilePreview(false)}
+                    >
+                      <X size={14} />
+                      <span>Close Preview</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="sidebar-menu-section" style={{ marginTop: '20px' }}>

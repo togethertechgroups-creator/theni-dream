@@ -167,7 +167,7 @@ export function useResolvedImage(url, isThumbnail = false) {
 }
 
 export function useResolvedVideo(url) {
-  const [resolvedUrl, setResolvedUrl] = useState('');
+  const [resolvedUrl, setResolvedUrl] = useState(url || '');
 
   useEffect(() => {
     let active = true;
