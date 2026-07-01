@@ -52,7 +52,8 @@
 }
 
 .mitshuka-font {
-  font-family: 'Mitshuka', serif;
+  font-family: 'Mitshuka', serif !important;
+  font-weight: normal !important;
   display: inline-block;
   padding-left: 12px;
   line-height: 1.4 !important;
@@ -60,8 +61,8 @@
 }
 
 .mitshuka-title-font {
-  font-family: 'Mitshuka', serif;
-  font-weight: normal;
+  font-family: 'Mitshuka', serif !important;
+  font-weight: normal !important;
   line-height: 1.3 !important;
 }
 
