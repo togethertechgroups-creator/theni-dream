@@ -414,7 +414,7 @@ export default function ServicesSection({ services }) {
         {/* Mobile Layout: Beautiful Swipeable/Scrollable Cards Grid */}
         <div className="services-mobile-layout">
           <div className="services-mobile-cards-grid">
-            {services.map((service, i) => (
+            {displayServices.map((service, i) => (
               <MobileServiceCard
                 key={service.id}
                 service={service}
