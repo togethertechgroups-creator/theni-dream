@@ -2008,6 +2008,29 @@ html.body-scroll-lock {
   gap: 24px;
 }
 
+/* Video Showcase Grid Cards */
+.video-showcase-card {
+  height: 280px;
+  cursor: pointer;
+}
+
+.video-player-container {
+  width: 100%;
+  height: 100%;
+}
+
+.portfolio-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 768px) {
+  .video-showcase-card {
+    height: 240px;
+  }
+}
+
 .portfolio-card {
   position: relative;
   height: 380px;

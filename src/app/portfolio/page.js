@@ -61,6 +61,8 @@ function SafeVideoPlayer({ src, thumbnail, alt, className, style }) {
   const videoRef = useRef(null);
   const resolvedVideo = useResolvedImage(src, false);
   const resolvedThumb = useResolvedImage(thumbnail, true);
+  // Detect mobile (touch) devices
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
   const handlePlayToggle = (e) => {
     e.stopPropagation();
@@ -85,17 +87,23 @@ function SafeVideoPlayer({ src, thumbnail, alt, className, style }) {
 
   return (
     <div className={`video-player-container ${className}`} style={{ position: 'relative', overflow: 'hidden', ...style }}>
+      {/* Thumbnail overlay — hidden when playing */}
       {!isPlaying && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, cursor: 'pointer' }} onClick={handlePlayToggle}>
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 2, cursor: 'pointer' }}
+          onClick={handlePlayToggle}
+          onTouchEnd={(e) => { e.preventDefault(); handlePlayToggle(e); }}
+        >
           <SafeImage src={thumbnail || '/pic/pic-6.jpeg'} alt={alt} className="portfolio-image" style={{ width: '100%', height: '100%', objectFit: 'cover' }} isThumbnail={true} />
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)', transition: 'background-color 0.2s' }}>
-            <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)' }} className="play-button-circle">
-              <Play size={20} style={{ marginLeft: '3px', fill: 'white' }} />
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)' }} className="play-button-circle">
+              <Play size={22} style={{ marginLeft: '4px', fill: 'white' }} />
             </div>
           </div>
         </div>
       )}
 
+      {/* Video element — always rendered so it preloads; hidden visually when thumbnail is shown */}
       <video
         ref={videoRef}
         src={resolvedVideo}
@@ -107,7 +115,15 @@ function SafeVideoPlayer({ src, thumbnail, alt, className, style }) {
         onClick={handlePlayToggle}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: isPlaying ? 'block' : 'none' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          visibility: isPlaying ? 'visible' : 'hidden',
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+        }}
       />
     </div>
   );
@@ -753,7 +769,7 @@ export default function PortfolioPage() {
                         key={item.id}
                         variants={itemVariants}
                         className="video-showcase-card etech-curve glass-card"
-                        style={{ overflow: 'hidden', height: '280px', position: 'relative' }}
+                        style={{ overflow: 'hidden', position: 'relative' }}
                       >
                         <SafeVideoPlayer
                           src={item.video}
