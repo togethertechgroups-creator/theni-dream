@@ -8,6 +8,7 @@ import { useResolvedImage, useResolvedVideo } from '@/utils/indexedDBStore';
 import ScrollReveal from '@/components/ScrollReveal';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
 import { getServiceCategories } from '@/utils/servicesData';
+import { fetchServiceCategoriesSync } from '@/utils/dbSync';
 
 function SafeImage({ src, alt, className, style, isThumbnail = false }) {
   const resolved = useResolvedImage(src, isThumbnail);
@@ -98,6 +99,8 @@ function VideoPlayOverlay({ videoUrl, onPlay }) {
   );
 }
 
+
+
 export default function ServicesPage() {
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
@@ -106,7 +109,15 @@ export default function ServicesPage() {
   const urlSearch = typeof window !== 'undefined' ? window.location.search : '';
 
   useEffect(() => {
-    setCategories(getServiceCategories());
+    const loadCategories = async () => {
+      const res = await fetchServiceCategoriesSync();
+      if (res.configured && res.categories) {
+        setCategories(res.categories);
+      } else {
+        setCategories(getServiceCategories());
+      }
+    };
+    loadCategories();
     
     const params = new URLSearchParams(urlSearch);
     const cat = params.get('cat');

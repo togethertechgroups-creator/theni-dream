@@ -9,13 +9,23 @@ import { motion } from 'framer-motion';
 import { mockStore } from '@/utils/mockStore';
 import ServicesSection from '@/components/ServicesSection';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
+import { fetchServicesSync } from '@/utils/dbSync';
 
 export default function Home() {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
 
   useEffect(() => {
-    setServices(mockStore.getServices());
+    const loadServices = async () => {
+      const res = await fetchServicesSync();
+      if (res.configured && res.services) {
+        setServices(res.services);
+        mockStore.setServices(res.services);
+      } else {
+        setServices(mockStore.getServices());
+      }
+    };
+    loadServices();
   }, []);
 
   // Synthesize camera shutter sound using Web Audio API

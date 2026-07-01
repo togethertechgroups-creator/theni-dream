@@ -765,7 +765,20 @@ const setStoredData = (key, data) => {
 // Main API Export
 export const mockStore = {
   // Packages
-  getPackages: () => getStoredData('td_packages_v4', DEFAULT_PACKAGES),
+  getPackages: () => {
+    const packages = getStoredData('td_packages_v4', DEFAULT_PACKAGES);
+    let updated = false;
+    packages.forEach(pkg => {
+      if (!pkg.id) {
+        pkg.id = pkg.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+        updated = true;
+      }
+    });
+    if (updated) {
+      setStoredData('td_packages_v4', packages);
+    }
+    return packages;
+  },
   setPackages: (packages) => setStoredData('td_packages_v4', packages),
 
   getServices: () => {

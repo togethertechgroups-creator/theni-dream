@@ -47,7 +47,19 @@ import {
   fetchPortfolioSync,
   savePortfolioSync,
   deletePortfolioSync,
-  uploadImageSync
+  uploadImageSync,
+  fetchPackagesSync,
+  savePackageSync,
+  deletePackageSync,
+  fetchTeamSync,
+  saveTeamSync,
+  deleteTeamSync,
+  fetchServiceCategoriesSync,
+  saveServiceCategorySync,
+  deleteServiceCategorySync,
+  fetchServicesSync,
+  saveServiceSync,
+  deleteServiceSync
 } from '@/utils/dbSync';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
@@ -369,19 +381,101 @@ export default function AdminPage() {
     }
     setPortfolio(port);
 
-    // 3. Fetch packages and services
-    const p = mockStore.getPackages();
-    const s = mockStore.getServices();
-    setPackages(p);
-    setServices(s);
+    // 3. Fetch packages
+    const packageSync = await fetchPackagesSync();
+    let pkgs;
+    if (packageSync.configured) {
+      pkgs = packageSync.packages || [];
+      const defaults = mockStore.getPackages();
+      let seededNew = false;
+      for (const pkg of defaults) {
+        if (!pkgs.some(x => x.id === pkg.id)) {
+          console.log(`Seeding missing package ${pkg.id} to D1 database...`);
+          await savePackageSync(pkg);
+          seededNew = true;
+        }
+      }
+      if (seededNew) {
+        const updatedPkgs = await fetchPackagesSync();
+        pkgs = updatedPkgs.packages || [];
+      }
+      mockStore.setPackages(pkgs);
+    } else {
+      pkgs = mockStore.getPackages();
+    }
+    setPackages(pkgs);
 
     // 4. Fetch team members
-    const t = mockStore.getTeam();
-    setTeam(t);
+    const teamSync = await fetchTeamSync();
+    let teamList;
+    if (teamSync.configured) {
+      teamList = teamSync.team || [];
+      const defaults = mockStore.getTeam();
+      let seededNew = false;
+      for (const member of defaults) {
+        if (!teamList.some(x => x.id === member.id)) {
+          console.log(`Seeding missing team member ${member.id} to D1 database...`);
+          await saveTeamSync(member);
+          seededNew = true;
+        }
+      }
+      if (seededNew) {
+        const updatedTeam = await fetchTeamSync();
+        teamList = updatedTeam.team || [];
+      }
+      mockStore.setTeam(teamList);
+    } else {
+      teamList = mockStore.getTeam();
+    }
+    setTeam(teamList);
 
     // 5. Fetch service categories
-    const cats = getServiceCategories();
+    const catSync = await fetchServiceCategoriesSync();
+    let cats;
+    if (catSync.configured) {
+      cats = catSync.categories || [];
+      const defaults = getServiceCategories();
+      let seededNew = false;
+      for (const cat of defaults) {
+        if (!cats.some(x => x.id === cat.id)) {
+          console.log(`Seeding missing category ${cat.id} to D1 database...`);
+          await saveServiceCategorySync(cat);
+          seededNew = true;
+        }
+      }
+      if (seededNew) {
+        const updatedCats = await fetchServiceCategoriesSync();
+        cats = updatedCats.categories || [];
+      }
+      setServiceCategories(cats);
+    } else {
+      cats = getServiceCategories();
+    }
     setAdminCategories(cats);
+
+    // 6. Fetch flat services
+    const svcSync = await fetchServicesSync();
+    let svcs;
+    if (svcSync.configured) {
+      svcs = svcSync.services || [];
+      const defaults = mockStore.getServices();
+      let seededNew = false;
+      for (const svc of defaults) {
+        if (!svcs.some(x => x.id === svc.id)) {
+          console.log(`Seeding missing flat service ${svc.id} to D1 database...`);
+          await saveServiceSync(svc);
+          seededNew = true;
+        }
+      }
+      if (seededNew) {
+        const updatedSvcs = await fetchServicesSync();
+        svcs = updatedSvcs.services || [];
+      }
+      mockStore.setServices(svcs);
+    } else {
+      svcs = mockStore.getServices();
+    }
+    setServices(svcs);
 
     if (a.length > 0 && !selectedAlbumId) {
       setSelectedAlbumId(a[0].id);
@@ -408,26 +502,68 @@ export default function AdminPage() {
     setIsCatFormOpen(true);
   };
 
-  const handleSaveCategory = async (e) => {
-    e.preventDefault();
-    
-    let finalImageUrl = editingCat.image;
-    if (categoryImageFile) {
-      const id = `user_uploaded_${Date.now()}_cat_${Math.random().toString(36).substr(2, 9)}`;
-      const thumbBlob = await createThumbnailBlob(categoryImageFile);
-      const originalUpload = await uploadImageSync(categoryImageFile, `${id}.jpg`);
-      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
-      if (originalUpload.configured && thumbUpload.configured) {
-        finalImageUrl = originalUpload.url;
-      } else {
-        await saveMediaBlob(id, categoryImageFile);
-        await saveMediaBlob(`${id}_thumb`, thumbBlob);
-        finalImageUrl = `indexeddb://${id}`;
+  const syncFlatServices = async (categories) => {
+    const currentFlat = mockStore.getServices();
+    const updatedFlat = currentFlat.map(svc => {
+      let foundSvc = null;
+      for (const cat of categories) {
+        if (cat.services) {
+          const match = cat.services.find(s => {
+            if (s.id === svc.id) return true;
+            if (svc.id === 'traditional' && s.id === 'traditional-photo') return true;
+            if (svc.id === 'candid' && s.id === 'candid-photo') return true;
+            if (svc.id === 'cinematic' && s.id === 'cinematic-videos') return true;
+            if (svc.id === 'model' && s.id === 'model-shoot') return true;
+            return s.name.toLowerCase().trim() === svc.name.toLowerCase().trim();
+          });
+          if (match) {
+            foundSvc = match;
+            break;
+          }
+        }
+      }
+      if (foundSvc) {
+        return {
+          ...svc,
+          name: foundSvc.name,
+          price: foundSvc.price,
+          image: foundSvc.image,
+          video: foundSvc.video || svc.video,
+          desc: foundSvc.desc || svc.desc
+        };
+      }
+      return svc;
+    });
+
+    const svcSync = await fetchServicesSync();
+    if (svcSync.configured) {
+      for (const svc of updatedFlat) {
+        await saveServiceSync(svc);
+      }
+      const fresh = await fetchServicesSync();
+      if (fresh.configured) {
+        mockStore.setServices(fresh.services);
+        setServices(fresh.services);
+        return;
       }
     }
+    mockStore.setServices(updatedFlat);
+    setServices(updatedFlat);
+  };
 
-    let updated;
-    if (editingCat.isNew) {
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    if (!editingCat.name || !editingCat.desc || !editingCat.price) {
+      showAlert('Category Name, Description, and Starts From Price are required.', 'danger');
+      return;
+    }
+
+    let updatedCat;
+    let isNew = editingCat.isNew;
+    let finalId = editingCat.id;
+
+    if (isNew) {
       const newCatId = editingCat.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
       let uniqueId = newCatId;
       let counter = 1;
@@ -435,36 +571,52 @@ export default function AdminPage() {
         uniqueId = `${newCatId}-${counter}`;
         counter++;
       }
-      const newCat = {
-        id: uniqueId,
+      finalId = uniqueId;
+      updatedCat = {
+        id: finalId,
         name: editingCat.name,
         desc: editingCat.desc,
         price: editingCat.price,
-        image: finalImageUrl || '/pic/services/events.png',
+        image: editingCat.image || '/pic/services/events.png',
         services: []
       };
-      updated = [...adminCategories, newCat];
     } else {
-      updated = adminCategories.map(cat => {
-        if (cat.id === editingCat.id) {
-          return {
-            ...cat,
-            name: editingCat.name,
-            desc: editingCat.desc,
-            price: editingCat.price,
-            image: finalImageUrl
-          };
-        }
-        return cat;
-      });
+      const original = adminCategories.find(c => c.id === editingCat.id);
+      updatedCat = {
+        ...original,
+        name: editingCat.name,
+        desc: editingCat.desc,
+        price: editingCat.price,
+        image: editingCat.image
+      };
     }
 
-    setAdminCategories(updated);
-    setServiceCategories(updated);
-    setIsCatFormOpen(false);
-    setEditingCat(null);
-    setCategoryImageFile(null);
-    showAlert(editingCat.isNew ? 'Category created successfully.' : 'Category details updated successfully.');
+    let updatedCategoriesList = isNew
+      ? [...adminCategories, updatedCat]
+      : adminCategories.map(cat => cat.id === editingCat.id ? updatedCat : cat);
+
+    try {
+      const res = await saveServiceCategorySync(updatedCat);
+      if (res.configured) {
+        const updatedRes = await fetchServiceCategoriesSync();
+        if (updatedRes.configured) {
+          updatedCategoriesList = updatedRes.categories;
+        }
+      }
+      setAdminCategories(updatedCategoriesList);
+      setServiceCategories(updatedCategoriesList);
+
+      // Automatically sync flat services list
+      await syncFlatServices(updatedCategoriesList);
+
+      setIsCatFormOpen(false);
+      setEditingCat(null);
+      setCategoryImageFile(null);
+      showAlert(isNew ? 'Category created successfully.' : 'Category details updated successfully.');
+    } catch (err) {
+      console.error(err);
+      showAlert('Failed to save service category.', 'danger');
+    }
   };
 
   const handleEditCategory = (cat) => {
@@ -477,90 +629,95 @@ export default function AdminPage() {
     triggerConfirm(
       'Delete Service Category',
       'Are you sure you want to delete this service category? All services and sub-services inside it will be permanently removed.',
-      () => {
-        const updated = adminCategories.filter(cat => cat.id !== catId);
-        setAdminCategories(updated);
-        setServiceCategories(updated);
-        showAlert('Category deleted successfully.', 'warning');
+      async () => {
+        try {
+          const res = await deleteServiceCategorySync(catId);
+          let updated = adminCategories.filter(cat => cat.id !== catId);
+          if (res.configured) {
+            const updatedRes = await fetchServiceCategoriesSync();
+            if (updatedRes.configured) {
+              updated = updatedRes.categories;
+            }
+          }
+          setAdminCategories(updated);
+          setServiceCategories(updated);
+
+          // Automatically sync flat services list
+          await syncFlatServices(updated);
+
+          showAlert('Category deleted successfully.', 'warning');
+        } catch (err) {
+          console.error(err);
+          showAlert('Failed to delete service category.', 'danger');
+        }
       }
     );
   };
 
   const handleSaveCatService = async (e) => {
     e.preventDefault();
+    if (!editingCatSvc.name || !editingCatSvc.price) {
+      showAlert('Service Name and Price are required.', 'danger');
+      return;
+    }
+
     const subServices = editingCatSvc.subServicesText
       ? editingCatSvc.subServicesText.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
       : [];
 
-    let finalImageUrl = editingCatSvc.image;
-    if (catServiceImageFile) {
-      const id = `user_uploaded_${Date.now()}_svc_${Math.random().toString(36).substr(2, 9)}`;
-      const thumbBlob = await createThumbnailBlob(catServiceImageFile);
-      const originalUpload = await uploadImageSync(catServiceImageFile, `${id}.jpg`);
-      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
-      if (originalUpload.configured && thumbUpload.configured) {
-        finalImageUrl = originalUpload.url;
-      } else {
-        await saveMediaBlob(id, catServiceImageFile);
-        await saveMediaBlob(`${id}_thumb`, thumbBlob);
-        finalImageUrl = `indexeddb://${id}`;
-      }
+    const targetCategory = adminCategories.find(cat => cat.id === selectedCatId);
+    if (!targetCategory) return;
+
+    let updatedServices = [];
+    const isNew = editingCatSvc.isNew;
+    const svcId = isNew ? (editingCatSvc.id || 'svc-' + Date.now()) : editingCatSvc.id;
+
+    const svcData = {
+      id: svcId,
+      name: editingCatSvc.name,
+      price: editingCatSvc.price,
+      image: editingCatSvc.image || '/pic/services/events.png',
+      video: editingCatSvc.video || '',
+      desc: editingCatSvc.desc || '',
+      ...(subServices.length > 0 ? { subServices } : {})
+    };
+
+    if (isNew) {
+      updatedServices = [...(targetCategory.services || []), svcData];
+    } else {
+      updatedServices = (targetCategory.services || []).map(svc => svc.id === svcId ? svcData : svc);
     }
 
-    let finalVideoUrl = editingCatSvc.video || '';
-    if (catServiceVideoFile) {
-      const id = `user_uploaded_${Date.now()}_svc_vid_${Math.random().toString(36).substr(2, 9)}`;
-      const originalUpload = await uploadImageSync(catServiceVideoFile, `${id}.mp4`);
-      if (originalUpload.configured) {
-        finalVideoUrl = originalUpload.url;
-      } else {
-        await saveMediaBlob(id, catServiceVideoFile);
-        finalVideoUrl = `indexeddb://${id}`;
-      }
-    }
+    const updatedCategory = {
+      ...targetCategory,
+      services: updatedServices
+    };
 
-    const updated = adminCategories.map(cat => {
-      if (cat.id === selectedCatId) {
-        let updatedServices = [];
-        if (editingCatSvc.isNew) {
-          const newSvc = {
-            id: editingCatSvc.id || 'svc-' + Date.now(),
-            name: editingCatSvc.name,
-            price: editingCatSvc.price,
-            image: finalImageUrl || '/pic/services/events.png',
-            video: finalVideoUrl,
-            desc: editingCatSvc.desc || '',
-            ...(subServices.length > 0 ? { subServices } : {})
-          };
-          updatedServices = [...(cat.services || []), newSvc];
-        } else {
-          updatedServices = (cat.services || []).map(svc => {
-            if (svc.id === editingCatSvc.id) {
-              return {
-                ...svc,
-                name: editingCatSvc.name,
-                price: editingCatSvc.price,
-                image: finalImageUrl,
-                video: finalVideoUrl,
-                desc: editingCatSvc.desc || '',
-                ...(subServices.length > 0 ? { subServices } : {})
-              };
-            }
-            return svc;
-          });
+    let updatedCategoriesList = adminCategories.map(cat => cat.id === selectedCatId ? updatedCategory : cat);
+
+    try {
+      const res = await saveServiceCategorySync(updatedCategory);
+      if (res.configured) {
+        const updatedRes = await fetchServiceCategoriesSync();
+        if (updatedRes.configured) {
+          updatedCategoriesList = updatedRes.categories;
         }
-        return { ...cat, services: updatedServices };
       }
-      return cat;
-    });
+      setAdminCategories(updatedCategoriesList);
+      setServiceCategories(updatedCategoriesList);
 
-    setAdminCategories(updated);
-    setServiceCategories(updated);
-    setIsCatSvcFormOpen(false);
-    setEditingCatSvc(null);
-    setCatServiceImageFile(null);
-    setCatServiceVideoFile(null);
-    showAlert(editingCatSvc.isNew ? 'New service added successfully.' : 'Service details updated successfully.');
+      // Automatically sync flat services list
+      await syncFlatServices(updatedCategoriesList);
+
+      setIsCatSvcFormOpen(false);
+      setEditingCatSvc(null);
+      setCatServiceImageFile(null);
+      setCatServiceVideoFile(null);
+      showAlert(isNew ? 'New service added successfully.' : 'Service details updated successfully.');
+    } catch (err) {
+      console.error(err);
+      showAlert('Failed to save service.', 'danger');
+    }
   };
 
   const handleEditCatService = (catId, svc) => {
@@ -598,20 +755,36 @@ export default function AdminPage() {
     triggerConfirm(
       'Delete Service',
       'Are you sure you want to delete this service?',
-      () => {
-        const updated = adminCategories.map(cat => {
-          if (cat.id === catId) {
-            return {
-              ...cat,
-              services: (cat.services || []).filter(s => s.id !== svcId)
-            };
-          }
-          return cat;
-        });
+      async () => {
+        const targetCategory = adminCategories.find(cat => cat.id === catId);
+        if (!targetCategory) return;
 
-        setAdminCategories(updated);
-        setServiceCategories(updated);
-        showAlert('Service deleted successfully.', 'warning');
+        const updatedCategory = {
+          ...targetCategory,
+          services: (targetCategory.services || []).filter(s => s.id !== svcId)
+        };
+
+        let updatedCategoriesList = adminCategories.map(cat => cat.id === catId ? updatedCategory : cat);
+
+        try {
+          const res = await saveServiceCategorySync(updatedCategory);
+          if (res.configured) {
+            const updatedRes = await fetchServiceCategoriesSync();
+            if (updatedRes.configured) {
+              updatedCategoriesList = updatedRes.categories;
+            }
+          }
+          setAdminCategories(updatedCategoriesList);
+          setServiceCategories(updatedCategoriesList);
+
+          // Automatically sync flat services list
+          await syncFlatServices(updatedCategoriesList);
+
+          showAlert('Service deleted successfully.', 'warning');
+        } catch (err) {
+          console.error(err);
+          showAlert('Failed to delete service.', 'danger');
+        }
       }
     );
   };
@@ -993,14 +1166,13 @@ export default function AdminPage() {
   };
 
   // --- Package Actions ---
-  const handleSavePackage = (e) => {
+  const handleSavePackage = async (e) => {
     e.preventDefault();
     if (!packageForm.name || !packageForm.price || !packageForm.desc) {
-      showAlert('All package fields except features are required.', 'danger');
+      showAlert('Package Name, Price, and Description are required.', 'danger');
       return;
     }
 
-    // Parse features from comma-separated or line-separated list
     const featuresList = packageForm.features
       .split('\n')
       .filter(line => line.trim())
@@ -1010,12 +1182,18 @@ export default function AdminPage() {
         return { text, include };
       });
 
+    let id = editingPackageIndex > -1 ? packages[editingPackageIndex].id : `pkg_${Date.now()}`;
+    if (!id) {
+      id = packageForm.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+    }
+
     const pkgData = {
+      id,
       name: packageForm.name,
       price: packageForm.price.replace(/[^\d,]/g, ''),
-      type: packageForm.type,
+      type: packageForm.type || 'Standard',
       desc: packageForm.desc,
-      popular: packageForm.popular,
+      popular: !!packageForm.popular,
       features: featuresList.length > 0 ? featuresList : [
         { text: "Full Day Photography Coverage", include: true },
         { text: "Edited Digital Files", include: true }
@@ -1025,23 +1203,34 @@ export default function AdminPage() {
     let updated;
     if (editingPackageIndex > -1) {
       updated = packages.map((p, idx) => idx === editingPackageIndex ? pkgData : p);
-      showAlert('Package updated successfully!');
     } else {
       updated = [...packages, pkgData];
-      showAlert('Package created successfully!');
     }
 
-    mockStore.setPackages(updated);
-    setPackages(updated);
-    setEditingPackageIndex(-1);
-    setPackageForm({ name: '', price: '', type: 'Standard', desc: '', popular: false, features: '' });
+    try {
+      const res = await savePackageSync(pkgData);
+      if (res.configured) {
+        const updatedRes = await fetchPackagesSync();
+        if (updatedRes.configured) {
+          updated = updatedRes.packages;
+        }
+      }
+      mockStore.setPackages(updated);
+      setPackages(updated);
+      setEditingPackageIndex(-1);
+      setPackageForm({ name: '', price: '', type: 'Standard', desc: '', popular: false, features: '' });
+      showAlert(editingPackageIndex > -1 ? 'Package updated successfully!' : 'Package created successfully!');
+    } catch (err) {
+      console.error(err);
+      showAlert('Failed to save package.', 'danger');
+    }
   };
 
   const handleEditPackage = (index) => {
     const pkg = packages[index];
     const featuresText = pkg.features
-      .map(f => `${f.include ? '+' : '-'} ${f.text}`)
-      .join('\n');
+      ? pkg.features.map(f => `${f.include ? '+' : '-'} ${f.text}`).join('\n')
+      : '';
 
     setEditingPackageIndex(index);
     setPackageForm({
@@ -1055,14 +1244,28 @@ export default function AdminPage() {
   };
 
   const handleDeletePackage = (index) => {
+    const pkg = packages[index];
+    if (!pkg) return;
     triggerConfirm(
       'Delete Package',
-      `Are you sure you want to permanently delete the ${packages[index].name} package?`,
-      () => {
-        const updated = packages.filter((_, idx) => idx !== index);
-        mockStore.setPackages(updated);
-        setPackages(updated);
-        showAlert('Package deleted.', 'warning');
+      `Are you sure you want to permanently delete the ${pkg.name} package?`,
+      async () => {
+        try {
+          const res = await deletePackageSync(pkg.id);
+          let updated = packages.filter((_, idx) => idx !== index);
+          if (res.configured) {
+            const updatedRes = await fetchPackagesSync();
+            if (updatedRes.configured) {
+              updated = updatedRes.packages;
+            }
+          }
+          mockStore.setPackages(updated);
+          setPackages(updated);
+          showAlert('Package deleted.', 'warning');
+        } catch (err) {
+          console.error(err);
+          showAlert('Failed to delete package.', 'danger');
+        }
       }
     );
   };
@@ -1160,7 +1363,7 @@ export default function AdminPage() {
   };
 
   // --- Team Actions ---
-  const handleSaveTeam = (e) => {
+  const handleSaveTeam = async (e) => {
     e.preventDefault();
     if (!teamForm.name || !teamForm.role || !teamForm.bio) {
       showAlert('Name, Role, and Bio are required.', 'danger');
@@ -1178,16 +1381,27 @@ export default function AdminPage() {
     let updated;
     if (editingTeamId) {
       updated = team.map(m => m.id === editingTeamId ? memberData : m);
-      showAlert('Team member details updated successfully!');
     } else {
       updated = [...team, memberData];
-      showAlert('New team member added successfully!');
     }
 
-    mockStore.setTeam(updated);
-    setTeam(updated);
-    setEditingTeamId('');
-    setTeamForm({ name: '', role: '', bio: '', image: '/pic/pic-5.png' });
+    try {
+      const res = await saveTeamSync(memberData);
+      if (res.configured) {
+        const updatedRes = await fetchTeamSync();
+        if (updatedRes.configured) {
+          updated = updatedRes.team;
+        }
+      }
+      mockStore.setTeam(updated);
+      setTeam(updated);
+      setEditingTeamId('');
+      setTeamForm({ name: '', role: '', bio: '', image: '/pic/pic-5.png' });
+      showAlert(editingTeamId ? 'Team member details updated successfully!' : 'New team member added successfully!');
+    } catch (err) {
+      console.error(err);
+      showAlert('Failed to save team member.', 'danger');
+    }
   };
 
   const handleEditTeam = (member) => {
@@ -1206,11 +1420,23 @@ export default function AdminPage() {
     triggerConfirm(
       'Delete Team Member',
       `Are you sure you want to permanently remove ${name} from the team?`,
-      () => {
-        const updated = team.filter(m => m.id !== id);
-        mockStore.setTeam(updated);
-        setTeam(updated);
-        showAlert('Team member removed.', 'warning');
+      async () => {
+        try {
+          const res = await deleteTeamSync(id);
+          let updated = team.filter(m => m.id !== id);
+          if (res.configured) {
+            const updatedRes = await fetchTeamSync();
+            if (updatedRes.configured) {
+              updated = updatedRes.team;
+            }
+          }
+          mockStore.setTeam(updated);
+          setTeam(updated);
+          showAlert('Team member removed.', 'warning');
+        } catch (err) {
+          console.error(err);
+          showAlert('Failed to delete team member.', 'danger');
+        }
       }
     );
   };
@@ -2085,6 +2311,23 @@ export default function AdminPage() {
                           >
                             {portfolioCategories.map((cat, i) => (
                               <option key={i} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Link to Album (Optional)</label>
+                          <select
+                            className="form-control"
+                            value={portfolioForm.albumId || ''}
+                            onChange={(e) => setPortfolioForm({ ...portfolioForm, albumId: e.target.value })}
+                            style={{ height: '40px', borderRadius: '8px', padding: '0 12px' }}
+                          >
+                            <option value="">-- No Link --</option>
+                            {albums.map((album) => (
+                              <option key={album.id} value={album.id}>
+                                {album.eventName} ({album.clientName})
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -3501,20 +3744,39 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="form-group">
+               <div className="form-group">
+                <label className="form-label">Category Image Preview</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                    <SafeImage src={editingCat.image || '/pic/services/events.png'} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} isThumbnail={true} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280', wordBreak: 'break-all' }}>Current path: {editingCat.image}</span>
+                </div>
                 <label className="form-label">Or Upload Custom Category Image</label>
                 <input
                   type="file"
                   accept="image/*"
                   className="form-control"
-                  onChange={(e) => setCategoryImageFile(e.target.files[0])}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const id = `user_uploaded_${Date.now()}_cat_${Math.random().toString(36).substr(2, 9)}`;
+                      const thumbBlob = await createThumbnailBlob(file);
+                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+                      if (originalUpload.configured && thumbUpload.configured) {
+                        setEditingCat({ ...editingCat, image: originalUpload.url });
+                        showAlert('Category cover image uploaded to R2!');
+                      } else {
+                        await saveMediaBlob(id, file);
+                        await saveMediaBlob(`${id}_thumb`, thumbBlob);
+                        setEditingCat({ ...editingCat, image: `indexeddb://${id}` });
+                        showAlert('Category cover image saved locally!');
+                      }
+                    }
+                  }}
                   style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
                 />
-                {categoryImageFile && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Selected: {categoryImageFile.name}</span>
-                  </div>
-                )}
               </div>
 
               <div className="form-row-2" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
@@ -3617,20 +3879,39 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="form-group">
+               <div className="form-group">
+                <label className="form-label">Service Image Preview</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                    <SafeImage src={editingCatSvc.image || '/pic/services/events.png'} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} isThumbnail={true} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280', wordBreak: 'break-all' }}>Current path: {editingCatSvc.image}</span>
+                </div>
                 <label className="form-label">Or Upload Custom Service Image</label>
                 <input
                   type="file"
                   accept="image/*"
                   className="form-control"
-                  onChange={(e) => setCatServiceImageFile(e.target.files[0])}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const id = `user_uploaded_${Date.now()}_svc_${Math.random().toString(36).substr(2, 9)}`;
+                      const thumbBlob = await createThumbnailBlob(file);
+                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+                      if (originalUpload.configured && thumbUpload.configured) {
+                        setEditingCatSvc({ ...editingCatSvc, image: originalUpload.url });
+                        showAlert('Service cover image uploaded to R2!');
+                      } else {
+                        await saveMediaBlob(id, file);
+                        await saveMediaBlob(`${id}_thumb`, thumbBlob);
+                        setEditingCatSvc({ ...editingCatSvc, image: `indexeddb://${id}` });
+                        showAlert('Service cover image saved locally!');
+                      }
+                    }
+                  }}
                   style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
                 />
-                {catServiceImageFile && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Selected: {catServiceImageFile.name}</span>
-                  </div>
-                )}
               </div>
 
               <div className="form-group">
@@ -3646,19 +3927,33 @@ export default function AdminPage() {
               </div>
 
               <div className="form-group">
+                {editingCatSvc.video && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#6b7280', wordBreak: 'break-all' }}>Current video: {editingCatSvc.video}</span>
+                  </div>
+                )}
                 <label className="form-label">Or Upload Custom Service Video</label>
                 <input
                   type="file"
                   accept="video/*"
                   className="form-control"
-                  onChange={(e) => setCatServiceVideoFile(e.target.files[0])}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const id = `user_uploaded_${Date.now()}_svc_vid_${Math.random().toString(36).substr(2, 9)}`;
+                      const originalUpload = await uploadImageSync(file, `${id}.mp4`);
+                      if (originalUpload.configured) {
+                        setEditingCatSvc({ ...editingCatSvc, video: originalUpload.url });
+                        showAlert('Service video uploaded to R2!');
+                      } else {
+                        await saveMediaBlob(id, file);
+                        setEditingCatSvc({ ...editingCatSvc, video: `indexeddb://${id}` });
+                        showAlert('Service video saved locally!');
+                      }
+                    }
+                  }}
                   style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
                 />
-                {catServiceVideoFile && (
-                  <div style={{ marginTop: '10px' }}>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>Selected: {catServiceVideoFile.name}</span>
-                  </div>
-                )}
               </div>
 
               <div className="form-group">

@@ -18,10 +18,28 @@ export const SERVICES_IMAGES_CONFIG = {
  * Falls back to the original image path if not configured.
  */
 export function getOptimizedServiceImage(service, originalImage) {
+  if (!originalImage) return originalImage;
+
+  // If the image is customized (e.g. uploaded file in indexeddb, data URI, or custom/external URL), return it directly
+  if (
+    originalImage.startsWith('indexeddb://') ||
+    originalImage.startsWith('data:') ||
+    originalImage.includes('user_uploaded') ||
+    originalImage.startsWith('http://') ||
+    originalImage.startsWith('https://')
+  ) {
+    return originalImage;
+  }
+
   if (!service) return originalImage;
   
   const id = (service.id || '').toLowerCase().trim();
   const name = (service.name || '').toLowerCase().trim();
+
+  // If the originalImage differs from the default hardcoded path, it has been customized, so return it
+  if (id && SERVICES_IMAGES_CONFIG[id] && originalImage !== SERVICES_IMAGES_CONFIG[id]) {
+    return originalImage;
+  }
 
   // 1. Match by exact ID
   if (SERVICES_IMAGES_CONFIG[id]) {

@@ -4,12 +4,22 @@ import { useState, useEffect } from 'react';
 import { Camera, Award, ShieldCheck, Heart, Users, CheckCircle, Quote } from 'lucide-react';
 import ScrollReveal from '@/components/ScrollReveal';
 import { mockStore } from '@/utils/mockStore';
+import { fetchTeamSync } from '@/utils/dbSync';
 
 export default function AboutPage() {
   const [team, setTeam] = useState([]);
 
   useEffect(() => {
-    setTeam(mockStore.getTeam());
+    const loadTeam = async () => {
+      const res = await fetchTeamSync();
+      if (res.configured && res.team) {
+        setTeam(res.team);
+        mockStore.setTeam(res.team);
+      } else {
+        setTeam(mockStore.getTeam());
+      }
+    };
+    loadTeam();
     document.title = "About Us | Theni Dream Photography";
   }, []);
 

@@ -87,7 +87,16 @@ export default function PackagesPage() {
   const [active, setActive] = useState(null);
 
   useEffect(() => {
-    setPackages(mockStore.getPackages());
+    const loadPackages = async () => {
+      const res = await fetchPackagesSync();
+      if (res.configured && res.packages) {
+        setPackages(res.packages);
+        mockStore.setPackages(res.packages);
+      } else {
+        setPackages(mockStore.getPackages());
+      }
+    };
+    loadPackages();
   }, []);
 
   const extract = (pkg, prefix) =>
