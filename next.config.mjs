@@ -4,6 +4,16 @@ const nextConfig = {
     appIsrStatus: false,
     buildActivity: false,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pub-813548e1748445df89bb392c16d942ec.r2.dev',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   /* config options here */
   allowedDevOrigins: [
     '192.168.1.8',

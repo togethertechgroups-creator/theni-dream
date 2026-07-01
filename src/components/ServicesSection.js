@@ -15,8 +15,16 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 // Wrapper component that handles indexeddb:// URLs properly
 function SafeServiceImage({ src, alt, className, style, width, height }) {
   const resolved = useResolvedImage(src, false);
-  // Use plain img for indexeddb/blob/data URIs; Next Image for static paths
-  if (resolved && (resolved.startsWith('blob:') || resolved.startsWith('data:') || resolved.startsWith('indexeddb://'))) {
+  // Use plain img for indexeddb/blob/data URIs and external http/https URLs to bypass Next.js remotePatterns security check
+  if (
+    resolved && (
+      resolved.startsWith('blob:') ||
+      resolved.startsWith('data:') ||
+      resolved.startsWith('indexeddb://') ||
+      resolved.startsWith('http://') ||
+      resolved.startsWith('https://')
+    )
+  ) {
     return (
       <img
         src={resolved}

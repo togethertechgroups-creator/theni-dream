@@ -15,7 +15,15 @@ import { useResolvedImage } from '@/utils/indexedDBStore';
 // Resolves indexeddb:// and blob: URLs for service images in modal
 function ServiceModalImage({ src, alt, className, style, width, height }) {
   const resolved = useResolvedImage(src, false);
-  if (resolved && (resolved.startsWith('blob:') || resolved.startsWith('data:') || resolved.startsWith('indexeddb://'))) {
+  if (
+    resolved && (
+      resolved.startsWith('blob:') ||
+      resolved.startsWith('data:') ||
+      resolved.startsWith('indexeddb://') ||
+      resolved.startsWith('http://') ||
+      resolved.startsWith('https://')
+    )
+  ) {
     return (
       <img
         src={resolved}

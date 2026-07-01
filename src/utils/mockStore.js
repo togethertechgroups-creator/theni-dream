@@ -182,7 +182,7 @@ const DEFAULT_SERVICES = [
     name: "Wedding Photography",
     price: "9,999",
     desc: "Complete coverage of pre-wedding, wedding rituals, and reception. Combines traditional coverage with premium candid photography.",
-    image: "/pic/wedding-service.jpg",
+    image: "https://pub-813548e1748445df89bb392c16d942ec.r2.dev/user_uploaded_1782890277645_spec_2ckjgder6.jpg",
     video: "/wedding-bgm.m4a",
     features: ["1 Senior Photographer", "High-Resolution Edited Digital Files", "Luxury Glass/Acrylic Album", "Full Event Coverages"]
   },
