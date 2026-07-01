@@ -48,6 +48,12 @@ function SafeServiceImage({ src, alt, className, style, width, height }) {
 }
 
 export default function ServicesSection({ services }) {
+  // Use the top 6 main services for the premium desktop sticky scroll showcase in correct predefined order
+  const HOMEPAGE_SERVICE_IDS = ['wedding', 'candid', 'traditional', 'cinematic', 'drone', 'pre-wedding'];
+  const displayServices = HOMEPAGE_SERVICE_IDS
+    .map(id => services.find(s => s.id === id))
+    .filter(Boolean);
+
   const [activeIdx, setActiveIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSoundOn, setIsSoundOn] = useState(false);
@@ -131,8 +137,6 @@ export default function ServicesSection({ services }) {
     // Reset mobile sound toggle state
     setActiveMobileAudioId(null);
 
-    const displayServices = services.slice(0, 6);
-
     if (newSoundOn) {
       const activeService = displayServices[activeIdxRef.current];
       if (activeService && activeService.video) {
@@ -145,7 +149,6 @@ export default function ServicesSection({ services }) {
 
   // When active card changes, stop old audio and start new one if sound is on
   useEffect(() => {
-    const displayServices = services.slice(0, 6);
     if (isSoundOn && isSectionVisible) {
       const activeService = displayServices[activeIdx];
       if (activeService && activeService.video) {
@@ -203,14 +206,11 @@ export default function ServicesSection({ services }) {
     return () => cancelAnimationFrame(requestRef.current);
   }, [isPlaying]);
 
-  // Use the top 6 main services for the premium desktop sticky scroll showcase
-  const displayServices = services.slice(0, 6);
-
   useGSAP(
     () => {
-      if (services.length === 0) return;
+      if (displayServices.length === 0) return;
 
-      console.log("Initializing GSAP Services Animation. Total services:", services.length);
+      console.log("Initializing GSAP Services Animation. Total services:", displayServices.length);
       gsap.registerPlugin(ScrollTrigger);
 
       // Robustly query elements within the containerRef scope
