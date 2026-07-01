@@ -1,6 +1,8 @@
 import { executeD1Query } from '@/utils/d1Client';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const dbResult = await executeD1Query("SELECT * FROM albums");
   if (!dbResult) {

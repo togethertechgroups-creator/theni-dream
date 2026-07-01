@@ -1,6 +1,8 @@
 import { executeD1Query } from '@/utils/d1Client';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 async function initTable() {
   await executeD1Query(`
     CREATE TABLE IF NOT EXISTS services (

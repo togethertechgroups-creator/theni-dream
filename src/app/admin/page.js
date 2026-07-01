@@ -174,6 +174,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('galleries');
   const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [previewPage, setPreviewPage] = useState('/');
+  const [isPreviewLandscape, setIsPreviewLandscape] = useState(false);
 
   // Data States
   const [albums, setAlbums] = useState([]);
