@@ -2766,7 +2766,7 @@ export default function AdminPage() {
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label" style={{ fontWeight: '600', color: '#374151', display: 'flex', justifyContents: 'space-between', justifyContent: 'space-between' }}>
                         <span>Upload Client Images *</span>
-                        <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '500' }}>Strict Limit: Max 10 MB per image</span>
+                        <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '500' }}>Strict Limit: Max 15 MB per image</span>
                       </label>
 
                       {/* Dropzone container */}
@@ -2819,7 +2819,7 @@ export default function AdminPage() {
                           </div>
                           <div>
                             <p style={{ margin: 0, fontWeight: '700', color: '#374151', fontSize: '0.95rem' }}>Drag and drop images here, or click to browse</p>
-                            <p style={{ margin: '0.25rem 0 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>Supports PNG, JPG, JPEG up to 10 MB each</p>
+                            <p style={{ margin: '0.25rem 0 0 0', color: '#9ca3af', fontSize: '0.8rem' }}>Supports PNG, JPG, JPEG up to 15 MB each</p>
                           </div>
                         </div>
                       </div>
