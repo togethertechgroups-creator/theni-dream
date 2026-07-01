@@ -6,10 +6,38 @@ import Image from 'next/image';
 import { Check, ArrowRight, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
+import { useResolvedImage } from '@/utils/indexedDBStore';
 
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+// Wrapper component that handles indexeddb:// URLs properly
+function SafeServiceImage({ src, alt, className, style, width, height }) {
+  const resolved = useResolvedImage(src, false);
+  // Use plain img for indexeddb/blob/data URIs; Next Image for static paths
+  if (resolved && (resolved.startsWith('blob:') || resolved.startsWith('data:') || resolved.startsWith('indexeddb://'))) {
+    return (
+      <img
+        src={resolved}
+        alt={alt}
+        className={className}
+        style={{ objectFit: 'cover', width: '100%', height: '100%', ...style }}
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <Image
+      src={resolved || '/pic/service-wedding.png'}
+      alt={alt}
+      className={className}
+      style={style}
+      width={width}
+      height={height}
+    />
+  );
+}
 
 export default function ServicesSection({ services }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -357,7 +385,7 @@ export default function ServicesSection({ services }) {
                   className="sticky-stacked-image-wrapper"
                 >
                   {/* Show image always, play audio separately for BGM */}
-                  <Image
+                  <SafeServiceImage
                     src={getOptimizedServiceImage(service, service.image)}
                     alt={service.name}
                     className="sticky-stacked-image"
@@ -425,7 +453,7 @@ function MobileServiceCard({ service, index, activeMobileAudioId, handleMobileSo
     <div className="services-mobile-card glass-card" ref={cardRef}>
       <div className="mobile-card-image-wrapper">
         {/* Always show the photo; audio plays separately */}
-        <Image
+        <SafeServiceImage
           src={getOptimizedServiceImage(service, service.image)}
           alt={service.name}
           className="mobile-card-img"

@@ -10,6 +10,33 @@ import { mockStore } from '@/utils/mockStore';
 import ServicesSection from '@/components/ServicesSection';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
 import { fetchServicesSync } from '@/utils/dbSync';
+import { useResolvedImage } from '@/utils/indexedDBStore';
+
+// Resolves indexeddb:// and blob: URLs for service images in modal
+function ServiceModalImage({ src, alt, className, style, width, height }) {
+  const resolved = useResolvedImage(src, false);
+  if (resolved && (resolved.startsWith('blob:') || resolved.startsWith('data:') || resolved.startsWith('indexeddb://'))) {
+    return (
+      <img
+        src={resolved}
+        alt={alt}
+        className={className}
+        style={{ objectFit: 'cover', width: '100%', height: '100%', ...style }}
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <Image
+      src={resolved || '/pic/service-wedding.png'}
+      alt={alt}
+      className={className}
+      style={style}
+      width={width}
+      height={height}
+    />
+  );
+}
 
 export default function Home() {
   const [services, setServices] = useState([]);
@@ -431,7 +458,7 @@ export default function Home() {
                     style={{ objectFit: "cover", width: "100%", height: "100%" }}
                   />
                 ) : (
-                  <Image
+                  <ServiceModalImage
                     src={getOptimizedServiceImage(selectedService, selectedService.image)}
                     alt={selectedService.name}
                     className="marquee-modal-image"
