@@ -1017,12 +1017,12 @@ export default function AdminPage() {
 
   const handleClientFileChange = (e) => {
     const files = Array.from(e.target.files);
-    const maxSize = 10 * 1024 * 1024; // 10 MB limit
+    const maxSize = 15 * 1024 * 1024; // 15 MB limit
     const invalidFiles = files.filter(f => f.size > maxSize);
 
     if (invalidFiles.length > 0) {
       const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-      showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+      showAlert(`Error: Image file size must be under 15 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
       e.target.value = null;
       setClientFiles([]);
       return;
@@ -1138,11 +1138,11 @@ export default function AdminPage() {
 
       if (newMediaFiles && newMediaFiles.length > 0) {
         if (album.albumType === 'client') {
-          const maxSize = 10 * 1024 * 1024;
+          const maxSize = 15 * 1024 * 1024;
           const invalidFiles = newMediaFiles.filter(f => f.size > maxSize);
           if (invalidFiles.length > 0) {
             const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-            showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+            showAlert(`Error: Image file size must be under 15 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
             return;
           }
         }
@@ -2184,11 +2184,11 @@ export default function AdminPage() {
                                     onChange={(e) => {
                                       const files = Array.from(e.target.files);
                                       if (activeAlbumObj && activeAlbumObj.albumType === 'client') {
-                                        const maxSize = 10 * 1024 * 1024;
+                                        const maxSize = 15 * 1024 * 1024;
                                         const invalidFiles = files.filter(f => f.size > maxSize);
                                         if (invalidFiles.length > 0) {
                                           const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-                                          showAlert(`Error: Image file size must be under 10 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
+                                          showAlert(`Error: Image file size must be under 15 MB. The following file(s) exceed this limit and were rejected: ${names}`, 'danger');
                                           e.target.value = null;
                                           setNewMediaFiles([]);
                                           return;
@@ -2785,11 +2785,11 @@ export default function AdminPage() {
                         onDrop={(e) => {
                           e.preventDefault();
                           const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                          const maxSize = 10 * 1024 * 1024;
-                          const invalidFiles = files.filter(f => f.size > maxSize);
-                          if (invalidFiles.length > 0) {
-                            const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-                            showAlert(`Error: The following file(s) exceed the 10 MB limit and were rejected: ${names}`, 'danger');
+                           const maxSize = 15 * 1024 * 1024;
+                           const invalidFiles = files.filter(f => f.size > maxSize);
+                           if (invalidFiles.length > 0) {
+                             const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
+                             showAlert(`Error: The following file(s) exceed the 15 MB limit and were rejected: ${names}`, 'danger');
                             return;
                           }
                           setClientFiles(files);
