@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, Calendar, Gem, Sparkles, Star, Award, Phone, Camera, Video, Gift } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import ScrollReveal from '@/components/ScrollReveal';
+import { fetchPackagesSync } from '@/utils/dbSync';
 
 const TIERS = [
   {
