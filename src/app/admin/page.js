@@ -5995,26 +5995,59 @@ export default function AdminPage() {
           style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            backdropFilter: 'blur(6px)',
             zIndex: 99999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
+            pointerEvents: 'none', // Allow clicking the form behind!
           }}
-          onClick={() => setShowMobilePreview(false)}
         >
           <div
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+            style={{
+              position: 'absolute',
+              top: '10px', right: '10px', bottom: '10px',
+              width: '430px',
+              backgroundColor: 'rgba(20,20,22,0.96)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '24px',
+              padding: '16px 12px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              pointerEvents: 'auto', // Enable pointer events for the preview!
+              overflowY: 'auto'
+            }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ color: 'white', fontWeight: '700', fontSize: '1.1rem', letterSpacing: '0.5px' }}>
-                📱 Mobile Preview — {previewPage === '/' ? 'Home' : previewPage.replace('/', '').replace(/-/g, ' ')}
-              </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 4px' }}>
+                <span style={{ color: 'white', fontWeight: '700', fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+                  📱 Mobile Preview
+                </span>
+                <button
+                  onClick={() => setShowMobilePreview(false)}
+                  style={{
+                    background: 'rgba(239,68,68,0.8)',
+                    border: 'none',
+                    color: 'white',
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Page pills */}
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
                 {[
                   { label: 'Home', path: '/' },
                   { label: 'Services', path: '/services' },
@@ -6027,14 +6060,14 @@ export default function AdminPage() {
                     key={p.path}
                     onClick={() => setPreviewPage(p.path)}
                     style={{
-                      padding: '4px 12px',
-                      borderRadius: '20px',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
                       border: 'none',
-                      fontSize: '0.75rem',
+                      fontSize: '0.7rem',
                       fontWeight: '600',
                       cursor: 'pointer',
-                      background: previewPage === p.path ? 'var(--primary)' : 'rgba(255,255,255,0.15)',
-                      color: previewPage === p.path ? 'white' : 'rgba(255,255,255,0.8)',
+                      background: previewPage === p.path ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                      color: previewPage === p.path ? 'white' : 'rgba(255,255,255,0.7)',
                       transition: 'all 0.2s',
                     }}
                   >
@@ -6042,37 +6075,17 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => setShowMobilePreview(false)}
-                style={{
-                  background: 'rgba(239,68,68,0.8)',
-                  border: 'none',
-                  color: 'white',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  flexShrink: 0,
-                }}
-              >
-                ✕
-              </button>
             </div>
 
             {/* Phone Frame */}
             <div
               style={{
-                width: '390px',
-                height: '760px',
+                width: '320px',
+                height: '620px',
                 background: '#1a1a1a',
-                borderRadius: '50px',
-                padding: '14px',
-                boxShadow: '0 0 0 2px #333, 0 0 0 4px #111, 0 30px 60px rgba(0,0,0,0.8)',
+                borderRadius: '40px',
+                padding: '10px',
+                boxShadow: '0 0 0 2px #333, 0 0 0 4px #111, 0 15px 30px rgba(0,0,0,0.5)',
                 position: 'relative',
                 flexShrink: 0,
               }}
@@ -6080,13 +6093,13 @@ export default function AdminPage() {
               {/* Phone Notch */}
               <div style={{
                 position: 'absolute',
-                top: '14px',
+                top: '10px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '120px',
-                height: '28px',
+                width: '100px',
+                height: '20px',
                 background: '#1a1a1a',
-                borderRadius: '0 0 20px 20px',
+                borderRadius: '0 0 15px 15px',
                 zIndex: 10,
               }} />
 
@@ -6094,7 +6107,7 @@ export default function AdminPage() {
               <div style={{
                 width: '100%',
                 height: '100%',
-                borderRadius: '38px',
+                borderRadius: '32px',
                 overflow: 'hidden',
                 background: '#fff',
                 position: 'relative',
@@ -6103,8 +6116,8 @@ export default function AdminPage() {
                   key={previewPage}
                   src={previewPage}
                   style={{
-                    width: '390px',
-                    height: '760px',
+                    width: '300px',
+                    height: '600px',
                     border: 'none',
                     transformOrigin: 'top left',
                     transform: 'scale(1)',
@@ -6117,18 +6130,18 @@ export default function AdminPage() {
               {/* Home Indicator */}
               <div style={{
                 position: 'absolute',
-                bottom: '8px',
+                bottom: '6px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '120px',
-                height: '5px',
+                width: '90px',
+                height: '4px',
                 background: '#444',
                 borderRadius: '10px',
               }} />
             </div>
 
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', margin: 0 }}>
-              Click outside to close • Select a page above to preview it
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem', margin: 0, textAlign: 'center' }}>
+              Edit forms on the left and see changes instantly here!
             </p>
           </div>
         </div>
