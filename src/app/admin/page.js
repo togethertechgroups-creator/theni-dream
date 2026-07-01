@@ -5988,6 +5988,151 @@ export default function AdminPage() {
           }
         }
       `}</style>
+
+      {/* ── Mobile Preview Phone Frame Modal ── */}
+      {showMobilePreview && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowMobilePreview(false)}
+        >
+          <div
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ color: 'white', fontWeight: '700', fontSize: '1.1rem', letterSpacing: '0.5px' }}>
+                📱 Mobile Preview — {previewPage === '/' ? 'Home' : previewPage.replace('/', '').replace(/-/g, ' ')}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { label: 'Home', path: '/' },
+                  { label: 'Services', path: '/services' },
+                  { label: 'Portfolio', path: '/portfolio' },
+                  { label: 'Packages', path: '/packages' },
+                  { label: 'About', path: '/about' },
+                  { label: 'Contact', path: '/contact' },
+                ].map(p => (
+                  <button
+                    key={p.path}
+                    onClick={() => setPreviewPage(p.path)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      background: previewPage === p.path ? 'var(--primary)' : 'rgba(255,255,255,0.15)',
+                      color: previewPage === p.path ? 'white' : 'rgba(255,255,255,0.8)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowMobilePreview(false)}
+                style={{
+                  background: 'rgba(239,68,68,0.8)',
+                  border: 'none',
+                  color: 'white',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Phone Frame */}
+            <div
+              style={{
+                width: '390px',
+                height: '760px',
+                background: '#1a1a1a',
+                borderRadius: '50px',
+                padding: '14px',
+                boxShadow: '0 0 0 2px #333, 0 0 0 4px #111, 0 30px 60px rgba(0,0,0,0.8)',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              {/* Phone Notch */}
+              <div style={{
+                position: 'absolute',
+                top: '14px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '120px',
+                height: '28px',
+                background: '#1a1a1a',
+                borderRadius: '0 0 20px 20px',
+                zIndex: 10,
+              }} />
+
+              {/* Screen */}
+              <div style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '38px',
+                overflow: 'hidden',
+                background: '#fff',
+                position: 'relative',
+              }}>
+                <iframe
+                  key={previewPage}
+                  src={previewPage}
+                  style={{
+                    width: '390px',
+                    height: '760px',
+                    border: 'none',
+                    transformOrigin: 'top left',
+                    transform: 'scale(1)',
+                    display: 'block',
+                  }}
+                  title="Mobile Preview"
+                />
+              </div>
+
+              {/* Home Indicator */}
+              <div style={{
+                position: 'absolute',
+                bottom: '8px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '120px',
+                height: '5px',
+                background: '#444',
+                borderRadius: '10px',
+              }} />
+            </div>
+
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', margin: 0 }}>
+              Click outside to close • Select a page above to preview it
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
