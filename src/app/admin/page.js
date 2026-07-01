@@ -2481,10 +2481,12 @@ export default function AdminPage() {
                   <div className="booking-split-view">
                     
                     {/* List Grid */}
-                    <div className="booking-list-panel glass-card etech-curve" style={{ width: '100%', maxWidth: '100%', flex: '1 1 100%' }}>
-                      <div className="flex-between" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 className="pane-subtitle serif-font" style={{ margin: 0 }}>Homepage Specialty Show</h3>
-                        <p style={{ color: 'var(--fg-muted)', fontSize: '0.9rem', margin: 0 }}>Manage the 6 specialty items displayed in the sticky split-reveal section on the home page.</p>
+                    <div className="booking-list-panel glass-card etech-curve" style={{ width: '100%', maxWidth: '100%', flex: '1 1 100%', padding: '2rem' }}>
+                      <div style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '1.25rem', marginBottom: '1.5rem' }}>
+                        <h3 className="pane-subtitle serif-font" style={{ margin: 0, fontSize: '1.75rem' }}>Homepage Specialty Show</h3>
+                        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                          Manage the 6 specialty items displayed in the sticky split-reveal section on the home page.
+                        </p>
                       </div>
 
                       <div className="admin-media-thumb-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
@@ -2496,7 +2498,7 @@ export default function AdminPage() {
                                 ₹{svc.price}
                               </div>
                             </div>
-                            <div className="media-thumb-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem', gap: '0.5rem', alignItems: 'stretch' }}>
+                            <div className="specialty-thumb-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem', gap: '0.5rem', alignItems: 'stretch' }}>
                               <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#1f2937' }}>{svc.name}</h4>
                               <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0, lineClamp: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '3.6em' }}>
                                 {svc.desc}
