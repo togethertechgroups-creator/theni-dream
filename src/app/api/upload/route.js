@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export async function POST(req) {
   try {
@@ -50,3 +50,52 @@ export async function POST(req) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req) {
+  try {
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const endpoint = process.env.R2_ENDPOINT;
+    const bucketName = process.env.R2_BUCKET_NAME;
+
+    if (!accessKeyId || !secretAccessKey || !endpoint || !bucketName) {
+      return NextResponse.json({ configured: false });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const fileUrl = searchParams.get('url');
+    const fileNameParam = searchParams.get('fileName');
+
+    let fileName = fileNameParam;
+    if (fileUrl) {
+      const urlParts = fileUrl.split('/');
+      fileName = urlParts[urlParts.length - 1];
+    }
+
+    if (!fileName) {
+      return NextResponse.json({ success: false, error: 'Missing url or fileName parameter' }, { status: 400 });
+    }
+
+    const s3 = new S3Client({
+      region: 'auto',
+      endpoint: endpoint,
+      credentials: {
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+      },
+    });
+
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: fileName,
+    });
+
+    await s3.send(command);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('R2 delete failed:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+

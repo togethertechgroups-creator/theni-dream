@@ -48,6 +48,7 @@ import {
   savePortfolioSync,
   deletePortfolioSync,
   uploadImageSync,
+  deleteImageSync,
   fetchPackagesSync,
   savePackageSync,
   deletePackageSync,
@@ -283,7 +284,7 @@ export default function AdminPage() {
 
   // Portfolio Form State
   const [portfolioForm, setPortfolioForm] = useState({
-    title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', albumId: ''
+    title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', video: '', albumId: ''
   });
   const [portfolioFilter, setPortfolioFilter] = useState('All');
 
@@ -302,7 +303,8 @@ export default function AdminPage() {
   // Compute portfolio categories dynamically based on services/categories defined by the user
   const getPortfolioCategories = () => {
     const base = [
-      "Wedding", "Reception", "Engagement", "Pre Wedding", "Baby Shoot", "Maternity", "Events", "Drone Shots"
+      "Wedding", "Reception", "Engagement", "Pre Wedding", "Baby Shoot", "Maternity", "Events", "Drone Shots",
+      "Traditional Videography", "Cinematic Videos", "Candid Videography"
     ];
     adminCategories.forEach(cat => {
       if (cat.name) base.push(cat.name);
@@ -682,11 +684,23 @@ export default function AdminPage() {
   };
 
   const handleDeleteCategory = (catId) => {
+    const targetCategory = adminCategories.find(cat => cat.id === catId);
     triggerConfirm(
       'Delete Service Category',
       'Are you sure you want to delete this service category? All services and sub-services inside it will be permanently removed.',
       async () => {
         try {
+          if (targetCategory) {
+            if (targetCategory.image) {
+              await deleteImageSync(targetCategory.image);
+            }
+            if (targetCategory.services) {
+              for (const s of targetCategory.services) {
+                if (s.image) await deleteImageSync(s.image);
+                if (s.video) await deleteImageSync(s.video);
+              }
+            }
+          }
           const res = await deleteServiceCategorySync(catId);
           let updated = adminCategories.filter(cat => cat.id !== catId);
           if (res.configured) {
@@ -815,6 +829,12 @@ export default function AdminPage() {
         const targetCategory = adminCategories.find(cat => cat.id === catId);
         if (!targetCategory) return;
 
+        const targetSvc = (targetCategory.services || []).find(s => s.id === svcId);
+        if (targetSvc) {
+          if (targetSvc.image) await deleteImageSync(targetSvc.image);
+          if (targetSvc.video) await deleteImageSync(targetSvc.video);
+        }
+
         const updatedCategory = {
           ...targetCategory,
           services: (targetCategory.services || []).filter(s => s.id !== svcId)
@@ -919,10 +939,23 @@ export default function AdminPage() {
   };
 
   const handleDeleteAlbum = (id) => {
+    const album = albums.find(a => a.id === id);
     triggerConfirm(
       'Delete Client Album',
       'Are you sure you want to delete this client album? All photo/video links inside will be removed.',
       async () => {
+        if (album) {
+          if (album.photos) {
+            for (const p of album.photos) {
+              if (p.url) await deleteImageSync(p.url);
+            }
+          }
+          if (album.videos) {
+            for (const v of album.videos) {
+              if (v.url) await deleteImageSync(v.url);
+            }
+          }
+        }
         const res = await deleteAlbumSync(id);
         if (res.configured) {
           const updatedRes = await fetchAlbumsSync();
@@ -1202,6 +1235,15 @@ export default function AdminPage() {
       'Delete Media Item',
       `Are you sure you want to permanently delete this ${mediaType}?`,
       async () => {
+        const deletedPhoto = mediaType === 'photo' ? album.photos.find(p => p.id === id) : null;
+        const deletedVideo = mediaType !== 'photo' ? album.videos.find(v => v.id === id) : null;
+        if (deletedPhoto && deletedPhoto.url) {
+          await deleteImageSync(deletedPhoto.url);
+        }
+        if (deletedVideo && deletedVideo.url) {
+          await deleteImageSync(deletedVideo.url);
+        }
+
         const updatedAlbum = {
           ...album,
           photos: mediaType === 'photo' ? album.photos.filter(p => p.id !== id) : [...(album.photos || [])],
@@ -1331,6 +1373,21 @@ export default function AdminPage() {
 
 
 
+  const checkVideoDuration = (file) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(video.duration);
+      };
+      video.onerror = () => {
+        resolve(-1);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   // --- Portfolio Actions ---
   const handleSavePortfolio = async (e) => {
     e.preventDefault();
@@ -1344,6 +1401,7 @@ export default function AdminPage() {
         title: portfolioForm.title,
         category: portfolioForm.category,
         image: portfolioForm.image || '/pic/pic-6.jpeg',
+        video: portfolioForm.video || '',
         albumId: portfolioForm.albumId || undefined
       };
       const res = await savePortfolioSync(updatedItem);
@@ -1359,13 +1417,14 @@ export default function AdminPage() {
         setPortfolio(updated);
       }
       setEditingPortfolioId('');
-      setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', albumId: '' });
+      setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', video: '', albumId: '' });
       showAlert('Portfolio item updated successfully!');
     } else {
       const newItem = {
         title: portfolioForm.title,
         category: portfolioForm.category,
         image: portfolioForm.image || '/pic/pic-6.jpeg',
+        video: portfolioForm.video || '',
         albumId: portfolioForm.albumId || undefined
       };
       const res = await savePortfolioSync(newItem);
@@ -1382,7 +1441,7 @@ export default function AdminPage() {
         mockStore.setPortfolio(updated);
         setPortfolio(updated);
       }
-      setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', albumId: '' });
+      setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', video: '', albumId: '' });
       showAlert('Portfolio item added successfully!');
     }
   };
@@ -1393,6 +1452,7 @@ export default function AdminPage() {
       title: item.title,
       category: item.category,
       image: item.image || '/pic/pic-6.jpeg',
+      video: item.video || '',
       albumId: item.albumId || ''
     });
   };
@@ -1404,6 +1464,9 @@ export default function AdminPage() {
       'Delete Portfolio Item',
       `Are you sure you want to permanently delete "${title}" from the portfolio showcase?`,
       async () => {
+        if (item && item.image) {
+          await deleteImageSync(item.image);
+        }
         const res = await deletePortfolioSync(id);
         if (res.configured) {
           const updatedRes = await fetchPortfolioSync();
@@ -1481,6 +1544,9 @@ export default function AdminPage() {
       `Are you sure you want to permanently remove ${name} from the team?`,
       async () => {
         try {
+          if (member && member.image) {
+            await deleteImageSync(member.image);
+          }
           const res = await deleteTeamSync(id);
           let updated = team.filter(m => m.id !== id);
           if (res.configured) {
@@ -2324,8 +2390,13 @@ export default function AdminPage() {
                           {portfolio
                             .filter(p => portfolioFilter === 'All' || p.category === portfolioFilter)
                             .map((p) => (
-                              <div key={p.id} className="media-thumb-card glass-card">
+                              <div key={p.id} className="media-thumb-card glass-card" style={{ position: 'relative' }}>
                                 <img src={p.image} alt={p.title} className="media-thumb" style={{ height: '100px', width: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                                {p.video && (
+                                  <div style={{ position: 'absolute', top: '5px', right: '5px', background: 'var(--primary)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                    VIDEO
+                                  </div>
+                                )}
                                 <div className="media-thumb-body" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
                                   <span style={{ fontWeight: '600', maxWidth: '100%' }}>{p.title}</span>
                                   <span className="event-badge-pill" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', margin: 0 }}>{p.category}</span>
@@ -2448,6 +2519,46 @@ export default function AdminPage() {
                                 }
                               }
                             }}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '15px', marginTop: '15px' }}>
+                          <label className="form-label" style={{ fontWeight: '600' }}>Video Showcase (Optional - up to 15s)</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Video URL (e.g. /video.mp4 or Cloudflare R2 link)"
+                            value={portfolioForm.video || ''}
+                            onChange={(e) => setPortfolioForm({ ...portfolioForm, video: e.target.value })}
+                          />
+
+                          <label className="form-label" style={{ marginTop: '0.75rem' }}>Or Upload Video File (Max 15 seconds)</label>
+                          <input
+                            type="file"
+                            accept="video/*"
+                            className="form-control"
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                // Validate video duration is up to 15 seconds
+                                const duration = await checkVideoDuration(file);
+                                if (duration > 15) {
+                                  showAlert('Upload failed: Video duration exceeds 15 seconds limit!', 'danger');
+                                  e.target.value = ''; // Reset file input
+                                  return;
+                                }
+                                const id = `user_uploaded_${Date.now()}_port_vid_${Math.random().toString(36).substr(2, 9)}`;
+                                const originalUpload = await uploadImageSync(file, `${id}.mp4`);
+                                if (originalUpload.configured) {
+                                  setPortfolioForm({ ...portfolioForm, video: originalUpload.url });
+                                  showAlert('Showcase video file uploaded to R2!');
+                                } else {
+                                  await saveMediaBlob(id, file);
+                                  setPortfolioForm({ ...portfolioForm, video: `indexeddb://${id}` });
+                                  showAlert('Showcase video file saved locally & ready!');
+                                }
+                              }
+                            }}
                             style={{ height: 'auto', borderRadius: '8px', padding: '8px' }}
                           />
                         </div>
@@ -2462,7 +2573,7 @@ export default function AdminPage() {
                             style={{ marginTop: '10px' }}
                             onClick={() => {
                               setEditingPortfolioId('');
-                              setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', albumId: '' });
+                              setPortfolioForm({ title: '', category: 'Wedding', image: '/pic/pic-6.jpeg', video: '', albumId: '' });
                             }}
                           >
                             Cancel Edit

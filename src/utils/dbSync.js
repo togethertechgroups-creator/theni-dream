@@ -161,6 +161,21 @@ export async function uploadImageSync(file, fileName) {
   }
 }
 
+export async function deleteImageSync(url) {
+  if (!url || !url.startsWith('http')) return { success: true };
+  try {
+    const res = await fetch(`/api/upload?url=${encodeURIComponent(url)}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('API request failed');
+    const data = await res.json();
+    return data; // { success: boolean }
+  } catch (err) {
+    console.error('Failed to delete image from R2 API:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 export async function fetchPackagesSync() {
   try {
     const res = await fetch('/api/packages');

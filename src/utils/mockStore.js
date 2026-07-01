@@ -734,7 +734,10 @@ const DEFAULT_PORTFOLIO = [
   { id: 132, category: "Model", title: "Diya Model - Elegant 04", image: "/dpg-diya-model-og/DPG Diya Model 04.jpg", albumId: "dpg_diya_model_og" },
   { id: 133, category: "Model", title: "Diya Model - Portrait 05", image: "/dpg-diya-model-og/DPG Diya Model 05.jpg", albumId: "dpg_diya_model_og" },
   { id: 134, category: "Model", title: "Diya Model - Vogue 06", image: "/dpg-diya-model-og/DPG Diya Model 06.jpg", albumId: "dpg_diya_model_og" },
-  { id: 135, category: "Model", title: "Diya Model - Radiant 07", image: "/dpg-diya-model-og/DPG Diya Model 07.jpg", albumId: "dpg_diya_model_og" }
+  { id: 135, category: "Model", title: "Diya Model - Radiant 07", image: "/dpg-diya-model-og/DPG Diya Model 07.jpg", albumId: "dpg_diya_model_og" },
+  { id: 136, category: "Traditional Videography", title: "Traditional Mandap Rituals", image: "/pic/70235.jpg", video: "https://assets.mixkit.co/videos/preview/mixkit-bride-and-groom-holding-hands-outside-43229-large.mp4" },
+  { id: 137, category: "Cinematic Videos", title: "Cinematic Couple Highlight", image: "/pic/69493.jpg", video: "https://assets.mixkit.co/videos/preview/mixkit-wedding-couple-slowly-spinning-during-a-dance-42990-large.mp4" },
+  { id: 138, category: "Candid Videography", title: "Candid Laughter Montage", image: "/pic/69496.jpg", video: "https://assets.mixkit.co/videos/preview/mixkit-newlyweds-kissing-under-a-white-veil-43013-large.mp4" }
 ];
 
 // Initialize helper

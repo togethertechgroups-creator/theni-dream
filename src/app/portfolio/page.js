@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle, ChevronDown, Play, Pause } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories } from '@/utils/servicesData';
 import { useResolvedImage } from '@/utils/indexedDBStore';
@@ -54,6 +54,82 @@ function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = fals
     />
   );
 }
+
+// Dedicated responsive video player that handles play overlays and R2 / indexeddb sources
+function SafeVideoPlayer({ src, thumbnail, alt, className, style }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef(null);
+  const resolvedVideo = useResolvedImage(src, false);
+  const resolvedThumb = useResolvedImage(thumbnail, true);
+
+  const handlePlayToggle = (e) => {
+    e.stopPropagation();
+    if (!videoRef.current) return;
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      // Pause all other video elements in the document
+      document.querySelectorAll('video').forEach(vid => {
+        if (vid !== videoRef.current) {
+          vid.pause();
+        }
+      });
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => {
+        console.error("Play failed:", err);
+      });
+    }
+  };
+
+  return (
+    <div className={`video-player-container ${className}`} style={{ position: 'relative', overflow: 'hidden', ...style }}>
+      {!isPlaying && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, cursor: 'pointer' }} onClick={handlePlayToggle}>
+          <SafeImage src={thumbnail || '/pic/pic-6.jpeg'} alt={alt} className="portfolio-image" style={{ width: '100%', height: '100%', objectFit: 'cover' }} isThumbnail={true} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)', transition: 'background-color 0.2s' }}>
+            <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)' }} className="play-button-circle">
+              <Play size={20} style={{ marginLeft: '3px', fill: 'white' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <video
+        ref={videoRef}
+        src={resolvedVideo}
+        poster={resolvedThumb}
+        className="portfolio-video"
+        playsInline
+        loop
+        controls={isPlaying}
+        onClick={handlePlayToggle}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: isPlaying ? 'block' : 'none' }}
+      />
+    </div>
+  );
+}
+
+// Full screen responsive video player inside lightbox modal
+function LightboxVideoPlayer({ src, thumbnail, alt }) {
+  const resolvedVideo = useResolvedImage(src, false);
+  const resolvedThumb = useResolvedImage(thumbnail, true);
+  return (
+    <video
+      src={resolvedVideo}
+      poster={resolvedThumb}
+      className="lightbox-img"
+      controls
+      autoPlay
+      playsInline
+      style={{ maxHeight: '80vh', maxWidth: '90vw', objectFit: 'contain' }}
+    />
+  );
+}
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Autoplay, Pagination, Navigation } from 'swiper/modules';
@@ -399,6 +475,8 @@ export default function PortfolioPage() {
     cat => cat.toLowerCase() === activeCategory.trim().toLowerCase()
   );
 
+  const IS_VIDEO_CATEGORY = ["traditional videography", "candid videography", "cinematic videos"].includes(activeCategory.trim().toLowerCase());
+
   return (
     <div className="portfolio-page-wrapper" onContextMenu={handleContextMenu}>
       {/* 1. Portfolio Header */}
@@ -616,13 +694,23 @@ export default function PortfolioPage() {
                         {/* Visual Protective Overlay */}
                         <div className="protective-overlay" onDragStart={handleDragStart} />
 
-                        <SafeImage
-                          src={item.image}
-                          alt={item.title}
-                          className="portfolio-image"
-                          onDragStart={handleDragStart}
-                          isThumbnail={true}
-                        />
+                        {item.video ? (
+                          <SafeVideoPlayer
+                            src={item.video}
+                            thumbnail={item.image}
+                            alt={item.title}
+                            className="portfolio-image"
+                            style={{ width: '100%', height: '100%' }}
+                          />
+                        ) : (
+                          <SafeImage
+                            src={item.image}
+                            alt={item.title}
+                            className="portfolio-image"
+                            onDragStart={handleDragStart}
+                            isThumbnail={true}
+                          />
+                        )}
 
                         {/* Info Card on Hover */}
                         <div className="portfolio-info-overlay">
@@ -647,19 +735,55 @@ export default function PortfolioPage() {
                 </motion.div>
               )
             ) : (
-              <motion.div
-                className="grid-3 portfolio-grid"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-                key={activeCategory} // Force stagger transition on category change
-              >
-                {albums.filter(album => {
-                  if (album.albumType === 'client') return false;
-                  const cat = album.category || "Wedding";
-                  return matchCategory(cat, activeCategory);
-                }).length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0', color: 'var(--fg-muted)' }}>
+              IS_VIDEO_CATEGORY ? (
+                filteredItems.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--fg-muted)', width: '100%' }}>
+                    <p>No video showcase items found in this category.</p>
+                  </div>
+                ) : (
+                  <motion.div
+                    className="grid-3 portfolio-grid"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                    key={activeCategory}
+                  >
+                    {filteredItems.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        variants={itemVariants}
+                        className="video-showcase-card etech-curve glass-card"
+                        style={{ overflow: 'hidden', height: '280px', position: 'relative' }}
+                      >
+                        <SafeVideoPlayer
+                          src={item.video}
+                          thumbnail={item.image}
+                          alt={item.title}
+                          className="video-player-box"
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                        <div className="portfolio-info-overlay-static" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '15px', background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%)', color: 'white', pointerEvents: 'none', zIndex: 3 }}>
+                          <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--primary)', fontWeight: 'bold' }}>{item.category}</span>
+                          <h3 className="serif-font" style={{ fontSize: '1.1rem', margin: '4px 0 0 0', textShadow: '1px 1px 2px rgba(0,0,0,0.8)', color: 'white' }}>{item.title}</h3>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                )
+              ) : (
+                <motion.div
+                  className="grid-3 portfolio-grid"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  key={activeCategory} // Force stagger transition on category change
+                >
+                  {albums.filter(album => {
+                    if (album.albumType === 'client') return false;
+                    const cat = album.category || "Wedding";
+                    return matchCategory(cat, activeCategory);
+                  }).length === 0 ? (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0', color: 'var(--fg-muted)' }}>
                     <p>No album collections found in this category.</p>
                   </div>
                 ) : (
@@ -710,8 +834,9 @@ export default function PortfolioPage() {
                     })
                 )}
               </motion.div>
-            )}
-          </>
+            )
+          )}
+        </>
 
         </div>
       </section>
@@ -759,12 +884,20 @@ export default function PortfolioPage() {
               {/* Protective Overlay in Lightbox */}
               <div className="protective-overlay" onDragStart={handleDragStart} />
 
-              <SafeImage
-                src={lightboxImagesList[lightboxActiveIndex].image}
-                alt={lightboxImagesList[lightboxActiveIndex].title}
-                className="lightbox-img"
-                onDragStart={handleDragStart}
-              />
+              {lightboxImagesList[lightboxActiveIndex].video ? (
+                <LightboxVideoPlayer
+                  src={lightboxImagesList[lightboxActiveIndex].video}
+                  thumbnail={lightboxImagesList[lightboxActiveIndex].image}
+                  alt={lightboxImagesList[lightboxActiveIndex].title}
+                />
+              ) : (
+                <SafeImage
+                  src={lightboxImagesList[lightboxActiveIndex].image}
+                  alt={lightboxImagesList[lightboxActiveIndex].title}
+                  className="lightbox-img"
+                  onDragStart={handleDragStart}
+                />
+              )}
 
               <div className="lightbox-caption glass-card">
                 <span className="caption-category">{lightboxImagesList[lightboxActiveIndex].category}</span>
