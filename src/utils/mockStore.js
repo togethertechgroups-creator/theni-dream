@@ -805,8 +805,8 @@ export const mockStore = {
           s.video = def.video;
           updated = true;
         }
-        // Migrate cached .mp4 URLs to .m4a
-        if (s.video && s.video.endsWith('.mp4') && def.video) {
+        // Migrate cached legacy BGM .mp4 URLs to .m4a, but preserve custom uploaded videography mp4 videos
+        if (s.video && s.video.endsWith('.mp4') && s.video.includes('/audio/') && def.video) {
           s.video = def.video;
           updated = true;
         }
@@ -964,6 +964,24 @@ export const mockStore = {
     return stored;
   },
   setTeam: (team) => setStoredData('td_team', team),
+
+  // Service categories — uses same localStorage key as servicesData.js
+  getServiceCategories: () => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem('td_service_categories_v3');
+      if (!data) return [];
+      return JSON.parse(data) || [];
+    } catch (e) {
+      return [];
+    }
+  },
+  setServiceCategories: (cats) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('td_service_categories_v3', JSON.stringify(cats));
+    } catch (e) {}
+  },
 
   // Admin credentials management
   getAdminCredentials: () => getStoredData('td_admin_creds_v1', { email: 'admin@thenidream.com', password: 'admin' }),

@@ -454,9 +454,9 @@ export default function AdminPage() {
         const updatedCats = await fetchServiceCategoriesSync();
         cats = updatedCats.categories || [];
       }
-      setServiceCategories(cats);
+      mockStore.setServiceCategories(cats);
     } else {
-      cats = getServiceCategories();
+      cats = mockStore.getServiceCategories();
     }
     setAdminCategories(cats);
 
@@ -661,8 +661,8 @@ export default function AdminPage() {
           updatedCategoriesList = updatedRes.categories;
         }
       }
+      mockStore.setServiceCategories(updatedCategoriesList);
       setAdminCategories(updatedCategoriesList);
-      setServiceCategories(updatedCategoriesList);
 
       // Automatically sync flat services list
       await syncFlatServices(updatedCategoriesList);
@@ -709,8 +709,8 @@ export default function AdminPage() {
               updated = updatedRes.categories;
             }
           }
+          mockStore.setServiceCategories(updated);
           setAdminCategories(updated);
-          setServiceCategories(updated);
 
           // Automatically sync flat services list
           await syncFlatServices(updated);
@@ -773,8 +773,8 @@ export default function AdminPage() {
           updatedCategoriesList = updatedRes.categories;
         }
       }
+      mockStore.setServiceCategories(updatedCategoriesList);
       setAdminCategories(updatedCategoriesList);
-      setServiceCategories(updatedCategoriesList);
 
       // Automatically sync flat services list
       await syncFlatServices(updatedCategoriesList);
@@ -850,8 +850,8 @@ export default function AdminPage() {
               updatedCategoriesList = updatedRes.categories;
             }
           }
+          mockStore.setServiceCategories(updatedCategoriesList);
           setAdminCategories(updatedCategoriesList);
-          setServiceCategories(updatedCategoriesList);
 
           // Automatically sync flat services list
           await syncFlatServices(updatedCategoriesList);

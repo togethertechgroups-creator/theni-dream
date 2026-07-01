@@ -9,6 +9,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
 import { getServiceCategories } from '@/utils/servicesData';
 import { fetchServiceCategoriesSync } from '@/utils/dbSync';
+import { mockStore } from '@/utils/mockStore';
 
 function SafeImage({ src, alt, className, style, isThumbnail = false }) {
   const resolved = useResolvedImage(src, isThumbnail);
@@ -114,7 +115,8 @@ export default function ServicesPage() {
       if (res.configured && res.categories) {
         setCategories(res.categories);
       } else {
-        setCategories(getServiceCategories());
+        const stored = mockStore.getServiceCategories();
+        setCategories(stored.length > 0 ? stored : getServiceCategories());
       }
     };
     loadCategories();
