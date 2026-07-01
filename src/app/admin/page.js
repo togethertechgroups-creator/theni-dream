@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Image as ImageIcon,
   Star,
@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories, setServiceCategories } from '@/utils/servicesData';
-import { saveMediaBlob, useResolvedImage, createThumbnailBlob } from '@/utils/indexedDBStore';
+import { saveMediaBlob, useResolvedImage, createThumbnailBlob, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
 import {
   fetchAlbumsSync,
   saveAlbumSync,
@@ -63,12 +63,29 @@ import {
   deleteServiceSync,
   compressImage
 } from '@/utils/dbSync';
+import CropModal from '@/components/CropModal';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
-  const resolved = useResolvedImage(src, isThumbnail);
+  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, isThumbnail);
+  if (isResponsive) {
+    return (
+      <picture style={{ display: 'contents' }}>
+        <source media="(max-width: 768px)" srcSet={mobile} />
+        <img
+          src={desktop}
+          alt={alt}
+          className={className}
+          style={style}
+          onDragStart={onDragStart}
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+    );
+  }
   return (
     <img
-      src={resolved}
+      src={desktop}
       alt={alt}
       className={className}
       style={style}
@@ -183,6 +200,9 @@ export default function AdminPage() {
   // Notifications/Alerts
   const [alertMsg, setAlertMsg] = useState({ text: '', type: '' });
   const [uploadProgress, setUploadProgress] = useState({ active: false, percent: 0, filename: '' });
+
+  // Crop modal state
+  const [cropModal, setCropModal] = useState({ open: false, file: null, aspectRatio: null, resolve: null, reject: null });
 
   // Form & Modals States
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
@@ -392,7 +412,37 @@ export default function AdminPage() {
     }
   };
 
-  // --- Service Category Actions ---
+  /**
+   * requestCrop — opens CropModal for a given file.
+   * Returns { desktop: Blob, mobile: Blob } if user saves, or null if cancelled.
+   * When aspectRatio is null the user can freely crop.
+   */
+  const requestCrop = useCallback((file, aspectRatio = null) => {
+    return new Promise((resolve) => {
+      setCropModal({
+        open: true,
+        file,
+        aspectRatio,
+        resolve,
+        reject: () => resolve(null)
+      });
+    });
+  }, []);
+
+  const handleCropSave = useCallback(async (desktopBlob, mobileBlob) => {
+    setCropModal(prev => {
+      if (prev.resolve) prev.resolve({ desktop: desktopBlob, mobile: mobileBlob });
+      return { open: false, file: null, aspectRatio: null, resolve: null, reject: null };
+    });
+  }, []);
+
+  const handleCropCancel = useCallback(() => {
+    setCropModal(prev => {
+      if (prev.reject) prev.reject();
+      return { open: false, file: null, aspectRatio: null, resolve: null, reject: null };
+    });
+  }, []);
+
   const handleAddNewCategoryClick = () => {
     setEditingCat({
       id: '',
@@ -781,32 +831,43 @@ export default function AdminPage() {
     let albumPhotos = [];
     if (newAlbumPhotosFiles && newAlbumPhotosFiles.length > 0) {
       for (let i = 0; i < newAlbumPhotosFiles.length; i++) {
-        let file = newAlbumPhotosFiles[i];
-        file = await compressImage(file);
+        const rawFile = newAlbumPhotosFiles[i];
+
+        // Smart crop before upload
+        const cropped = await requestCrop(rawFile, null);
+        if (!cropped) continue; // skipped by user
+
+        let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
+        let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
         const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
-        const thumbBlob = await createThumbnailBlob(file);
 
         // Upload to R2 if configured, else IndexedDB
-        const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newAlbumPhotosFiles.length}`);
-        const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newAlbumPhotosFiles.length}`);
 
         if (originalUpload.configured && thumbUpload.configured) {
+          const responsiveUrl = mobileUpload.configured
+            ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
+            : originalUpload.url;
           albumPhotos.push({
             id: i + 1,
-            title: file.name.split('.')[0],
-            url: originalUpload.url
+            title: rawFile.name.split('.')[0],
+            url: responsiveUrl
           });
         } else {
-          await saveMediaBlob(id, file);
-          await saveMediaBlob(`${id}_thumb`, thumbBlob);
+          await saveMediaBlob(id, cropped.desktop);
+          await saveMediaBlob(`${id}_mobile`, cropped.mobile);
+          await saveMediaBlob(`${id}_thumb`, cropped.mobile);
           albumPhotos.push({
             id: i + 1,
-            title: file.name.split('.')[0],
+            title: rawFile.name.split('.')[0],
             url: `indexeddb://${id}`
           });
         }
       }
     }
+
 
     const newAlb = {
       id: code.toLowerCase(),
@@ -951,31 +1012,42 @@ export default function AdminPage() {
       let albumPhotos = [];
       if (clientFiles && clientFiles.length > 0) {
         for (let i = 0; i < clientFiles.length; i++) {
-          let file = clientFiles[i];
-          file = await compressImage(file);
-          const id = `user_uploaded_${Date.now()}_client_${i}_${Math.random().toString(36).substr(2, 9)}`;
-          const thumbBlob = await createThumbnailBlob(file);
+          const rawFile = clientFiles[i];
 
-          const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${clientFiles.length}`);
-          const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${clientFiles.length}`);
+          // Smart crop before upload
+          const cropped = await requestCrop(rawFile, null);
+          if (!cropped) continue; // skipped by user
+
+          let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
+          let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
+          const id = `user_uploaded_${Date.now()}_client_${i}_${Math.random().toString(36).substr(2, 9)}`;
+
+          const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${clientFiles.length}`);
+          const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${clientFiles.length}`);
+          const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${clientFiles.length}`);
 
           if (originalUpload.configured && thumbUpload.configured) {
+            const responsiveUrl = mobileUpload.configured
+              ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
+              : originalUpload.url;
             albumPhotos.push({
               id: i + 1,
-              title: file.name.split('.')[0],
-              url: originalUpload.url
+              title: rawFile.name.split('.')[0],
+              url: responsiveUrl
             });
           } else {
-            await saveMediaBlob(id, file);
-            await saveMediaBlob(`${id}_thumb`, thumbBlob);
+            await saveMediaBlob(id, cropped.desktop);
+            await saveMediaBlob(`${id}_mobile`, cropped.mobile);
+            await saveMediaBlob(`${id}_thumb`, cropped.mobile);
             albumPhotos.push({
               id: i + 1,
-              title: file.name.split('.')[0],
+              title: rawFile.name.split('.')[0],
               url: `indexeddb://${id}`
             });
           }
         }
       }
+
       const newAlb = {
         id: code.toLowerCase(),
         eventCode: code,
@@ -1055,28 +1127,45 @@ export default function AdminPage() {
         setMediaUploadedCount(0);
         
         try {
-          // Upload multiple files
+          // Upload multiple files with smart crop step
           for (let i = 0; i < newMediaFiles.length; i++) {
-            let file = newMediaFiles[i];
-            file = await compressImage(file);
-            const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
-            const thumbBlob = await createThumbnailBlob(file);
+            const rawFile = newMediaFiles[i];
 
-            const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newMediaFiles.length}`);
-            const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newMediaFiles.length}`);
+            // Open smart crop modal — user can adjust or cancel
+            const cropped = await requestCrop(rawFile, null);
+            if (!cropped) {
+              // User cancelled this file — skip it
+              setMediaUploadedCount(i + 1);
+              continue;
+            }
+
+            // Use the desktop blob as the primary upload; mobile blob as thumbnail
+            let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
+            let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
+
+            const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
+
+            const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${newMediaFiles.length}`);
+            const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${newMediaFiles.length}`);
+            const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newMediaFiles.length}`);
 
             if (originalUpload.configured && thumbUpload.configured) {
+              // Store as responsive JSON so <picture> tag serves correct size
+              const responsiveUrl = mobileUpload.configured
+                ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
+                : originalUpload.url;
               updatedPhotos.push({
                 id: startId + i,
-                title: file.name.split('.')[0],
-                url: originalUpload.url
+                title: rawFile.name.split('.')[0],
+                url: responsiveUrl
               });
             } else {
-              await saveMediaBlob(id, file);
-              await saveMediaBlob(`${id}_thumb`, thumbBlob);
+              await saveMediaBlob(id, cropped.desktop);
+              await saveMediaBlob(`${id}_mobile`, cropped.mobile);
+              await saveMediaBlob(`${id}_thumb`, cropped.mobile);
               updatedPhotos.push({
                 id: startId + i,
-                title: file.name.split('.')[0],
+                title: rawFile.name.split('.')[0],
                 url: `indexeddb://${id}`
               });
             }
@@ -1752,7 +1841,18 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page-wrapper">
+      {/* Smart Crop Modal — shown when uploading images */}
+      {cropModal.open && (
+        <CropModal
+          file={cropModal.file}
+          aspectRatio={cropModal.aspectRatio}
+          onSave={handleCropSave}
+          onCancel={handleCropCancel}
+          title="Smart Crop Image"
+        />
+      )}
       {/* Admin Container */}
+
       <section className="admin-main-section section-padding">
         <div className="admin-container">
 

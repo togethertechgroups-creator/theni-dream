@@ -4,19 +4,36 @@ import { useState, useEffect, useRef } from 'react';
 import { Eye, X, Lock, ChevronLeft, ChevronRight, AlertCircle, ChevronDown, Play, Pause } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories } from '@/utils/servicesData';
-import { useResolvedImage } from '@/utils/indexedDBStore';
+import { useResolvedImage, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
 import { fetchAlbumsSync, fetchPortfolioSync, saveAlbumSync, savePortfolioSync, deleteAlbumSync } from '@/utils/dbSync';
 import NextImage from 'next/image';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
-  const resolved = useResolvedImage(src, isThumbnail);
+  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, isThumbnail);
+
+  if (isResponsive) {
+    return (
+      <picture style={{ display: 'contents' }}>
+        <source media="(max-width: 768px)" srcSet={mobile} />
+        <img
+          src={desktop}
+          alt={alt}
+          className={className}
+          style={style}
+          onDragStart={onDragStart}
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+    );
+  }
 
   // Optimize large static JPG/PNG image files to target 15KB compressed size
-  if (resolved && resolved.startsWith('/') && !resolved.startsWith('data:')) {
+  if (desktop && desktop.startsWith('/') && !desktop.startsWith('data:')) {
     if (isThumbnail) {
       return (
         <NextImage
-          src={resolved}
+          src={desktop}
           alt={alt}
           className={className}
           style={{ ...style, objectFit: 'cover' }}
@@ -29,7 +46,7 @@ function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = fals
     } else {
       return (
         <NextImage
-          src={resolved}
+          src={desktop}
           alt={alt}
           className={className}
           style={{ ...style, objectFit: 'contain' }}
@@ -44,7 +61,7 @@ function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = fals
 
   return (
     <img
-      src={resolved}
+      src={desktop}
       alt={alt}
       className={className}
       style={style}
@@ -1028,7 +1045,7 @@ export default function PortfolioPage() {
           border-radius: var(--radius-md) !important;
           box-shadow: var(--shadow-lg);
           overflow: hidden !important;
-          transition: all var(--transition-normal);
+          transition: opacity var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
         }
         @media (min-width: 768px) {
           .swiper-custom-card {

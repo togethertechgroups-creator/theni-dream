@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import { Camera, Check, ArrowRight, Play, X } from 'lucide-react';
-import { useResolvedImage, useResolvedVideo } from '@/utils/indexedDBStore';
+import { useResolvedImage, useResolvedVideo, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
 import ScrollReveal from '@/components/ScrollReveal';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
 import { getServiceCategories } from '@/utils/servicesData';
@@ -12,12 +12,21 @@ import { fetchServiceCategoriesSync } from '@/utils/dbSync';
 import { mockStore } from '@/utils/mockStore';
 
 function SafeImage({ src, alt, className, style, isThumbnail = false }) {
-  const resolved = useResolvedImage(src, isThumbnail);
+  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, isThumbnail);
 
-  if (resolved && resolved.startsWith('/') && !resolved.startsWith('data:')) {
+  if (isResponsive) {
+    return (
+      <picture style={{ display: 'contents' }}>
+        <source media="(max-width: 768px)" srcSet={mobile} />
+        <img src={desktop} alt={alt} className={className} style={style} loading="lazy" decoding="async" />
+      </picture>
+    );
+  }
+
+  if (desktop && desktop.startsWith('/') && !desktop.startsWith('data:')) {
     return (
       <NextImage
-        src={resolved}
+        src={desktop}
         alt={alt}
         className={className}
         style={{ ...style, objectFit: 'cover' }}
@@ -30,7 +39,7 @@ function SafeImage({ src, alt, className, style, isThumbnail = false }) {
 
   return (
     <img
-      src={resolved}
+      src={desktop}
       alt={alt}
       className={className}
       style={style}

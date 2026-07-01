@@ -6,28 +6,45 @@ import Image from 'next/image';
 import { Check, ArrowRight, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOptimizedServiceImage } from '@/utils/servicesImagesConfig';
-import { useResolvedImage } from '@/utils/indexedDBStore';
+import { useResolvedImage, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
 
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-// Wrapper component that handles indexeddb:// URLs properly
+// Wrapper component that handles indexeddb:// URLs and responsive JSON image strings
 function SafeServiceImage({ src, alt, className, style, width, height }) {
-  const resolved = useResolvedImage(src, false);
+  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, false);
+
+  if (isResponsive) {
+    return (
+      <picture style={{ display: 'contents' }}>
+        <source media="(max-width: 768px)" srcSet={mobile} />
+        <img
+          src={desktop}
+          alt={alt}
+          className={className}
+          style={{ objectFit: 'cover', width: '100%', height: '100%', ...style }}
+          loading="lazy"
+        />
+      </picture>
+    );
+  }
+
   // Use plain img for indexeddb/blob/data URIs and external http/https URLs to bypass Next.js remotePatterns security check
   if (
-    resolved && (
-      resolved.startsWith('blob:') ||
-      resolved.startsWith('data:') ||
-      resolved.startsWith('indexeddb://') ||
-      resolved.startsWith('http://') ||
-      resolved.startsWith('https://')
+    desktop &&
+    (
+      desktop.startsWith('blob:') ||
+      desktop.startsWith('data:') ||
+      desktop.startsWith('indexeddb://') ||
+      desktop.startsWith('http://') ||
+      desktop.startsWith('https://')
     )
   ) {
     return (
       <img
-        src={resolved}
+        src={desktop}
         alt={alt}
         className={className}
         style={{ objectFit: 'cover', width: '100%', height: '100%', ...style }}
@@ -37,7 +54,7 @@ function SafeServiceImage({ src, alt, className, style, width, height }) {
   }
   return (
     <Image
-      src={resolved || '/pic/service-wedding.png'}
+      src={desktop || '/pic/service-wedding.png'}
       alt={alt}
       className={className}
       style={style}

@@ -8,13 +8,29 @@ import { Download, CheckCircle2, ChevronLeft, ChevronRight, X, AlertCircle, Home
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import JSZip from 'jszip';
-import { useResolvedImage, getMediaBlob } from '@/utils/indexedDBStore';
+import { useResolvedImage, getMediaBlob, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
-  const resolved = useResolvedImage(src, isThumbnail);
+  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, isThumbnail);
+  if (isResponsive) {
+    return (
+      <picture style={{ display: 'contents' }}>
+        <source media="(max-width: 768px)" srcSet={mobile} />
+        <img
+          src={desktop}
+          alt={alt}
+          className={className}
+          style={style}
+          onDragStart={onDragStart}
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
+    );
+  }
   return (
     <img
-      src={resolved}
+      src={desktop}
       alt={alt}
       className={className}
       style={style}

@@ -192,3 +192,28 @@ export function useResolvedVideo(url) {
   return resolvedUrl;
 }
 
+export function useResponsiveResolvedImages(src, isThumbnail = false) {
+  const isJson = typeof src === 'string' && src.trim().startsWith('{');
+  let desktopSrc = src;
+  let mobileSrc = src;
+
+  if (isJson) {
+    try {
+      const parsed = JSON.parse(src);
+      desktopSrc = parsed.desktop;
+      mobileSrc = parsed.mobile || parsed.desktop;
+    } catch (e) {
+      // Ignored
+    }
+  }
+
+  const resolvedDesktop = useResolvedImage(desktopSrc, isThumbnail);
+  const resolvedMobile = useResolvedImage(mobileSrc, isThumbnail);
+
+  return {
+    isResponsive: isJson,
+    desktop: resolvedDesktop,
+    mobile: resolvedMobile
+  };
+}
+
