@@ -59,7 +59,8 @@ import {
   deleteServiceCategorySync,
   fetchServicesSync,
   saveServiceSync,
-  deleteServiceSync
+  deleteServiceSync,
+  compressImage
 } from '@/utils/dbSync';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
@@ -803,7 +804,8 @@ export default function AdminPage() {
     let albumPhotos = [];
     if (newAlbumPhotosFiles && newAlbumPhotosFiles.length > 0) {
       for (let i = 0; i < newAlbumPhotosFiles.length; i++) {
-        const file = newAlbumPhotosFiles[i];
+        let file = newAlbumPhotosFiles[i];
+        file = await compressImage(file);
         const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
         const thumbBlob = await createThumbnailBlob(file);
 
@@ -957,7 +959,8 @@ export default function AdminPage() {
       let albumPhotos = [];
       if (clientFiles && clientFiles.length > 0) {
         for (let i = 0; i < clientFiles.length; i++) {
-          const file = clientFiles[i];
+          let file = clientFiles[i];
+          file = await compressImage(file);
           const id = `user_uploaded_${Date.now()}_client_${i}_${Math.random().toString(36).substr(2, 9)}`;
           const thumbBlob = await createThumbnailBlob(file);
 
@@ -1062,7 +1065,8 @@ export default function AdminPage() {
         try {
           // Upload multiple files
           for (let i = 0; i < newMediaFiles.length; i++) {
-            const file = newMediaFiles[i];
+            let file = newMediaFiles[i];
+            file = await compressImage(file);
             const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
             const thumbBlob = await createThumbnailBlob(file);
 
@@ -2364,8 +2368,9 @@ export default function AdminPage() {
                             accept="image/*"
                             className="form-control"
                             onChange={async (e) => {
-                              const file = e.target.files[0];
+                              let file = e.target.files[0];
                               if (file) {
+                                file = await compressImage(file);
                                 const id = `user_uploaded_${Date.now()}_port_${Math.random().toString(36).substr(2, 9)}`;
                                 const originalUpload = await uploadImageSync(file, `${id}.jpg`);
                                 if (originalUpload.configured) {
@@ -3587,8 +3592,9 @@ export default function AdminPage() {
                   accept="image/*"
                   className="form-control"
                   onChange={async (e) => {
-                    const file = e.target.files[0];
+                    let file = e.target.files[0];
                     if (file) {
+                      file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_team_${Math.random().toString(36).substr(2, 9)}`;
                       const originalUpload = await uploadImageSync(file, `${id}.jpg`);
                       if (originalUpload.configured) {
@@ -3758,8 +3764,9 @@ export default function AdminPage() {
                   accept="image/*"
                   className="form-control"
                   onChange={async (e) => {
-                    const file = e.target.files[0];
+                    let file = e.target.files[0];
                     if (file) {
+                      file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_cat_${Math.random().toString(36).substr(2, 9)}`;
                       const thumbBlob = await createThumbnailBlob(file);
                       const originalUpload = await uploadImageSync(file, `${id}.jpg`);
@@ -3893,8 +3900,9 @@ export default function AdminPage() {
                   accept="image/*"
                   className="form-control"
                   onChange={async (e) => {
-                    const file = e.target.files[0];
+                    let file = e.target.files[0];
                     if (file) {
+                      file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_svc_${Math.random().toString(36).substr(2, 9)}`;
                       const thumbBlob = await createThumbnailBlob(file);
                       const originalUpload = await uploadImageSync(file, `${id}.jpg`);
