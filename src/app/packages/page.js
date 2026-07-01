@@ -90,7 +90,7 @@ export default function PackagesPage() {
   useEffect(() => {
     const loadPackages = async () => {
       const res = await fetchPackagesSync();
-      if (res.configured && res.packages) {
+      if (res.configured && res.packages && res.packages.length > 0) {
         setPackages(res.packages);
         mockStore.setPackages(res.packages);
       } else {

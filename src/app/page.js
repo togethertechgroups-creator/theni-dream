@@ -53,7 +53,7 @@ export default function Home() {
   useEffect(() => {
     const loadServices = async () => {
       const res = await fetchServicesSync();
-      if (res.configured && res.services) {
+      if (res.configured && res.services && res.services.length > 0) {
         setServices(res.services);
         mockStore.setServices(res.services);
       } else {

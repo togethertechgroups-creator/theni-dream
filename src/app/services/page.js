@@ -117,7 +117,7 @@ export default function ServicesPage() {
   useEffect(() => {
     const loadCategories = async () => {
       const res = await fetchServiceCategoriesSync();
-      if (res.configured && res.categories) {
+      if (res.configured && res.categories && res.categories.length > 0) {
         setCategories(res.categories);
       } else {
         const stored = mockStore.getServiceCategories();
