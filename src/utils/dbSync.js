@@ -139,7 +139,7 @@ export async function compressImage(file, maxWidth = 1920, maxHeight = 1080, qua
   });
 }
 
-export async function uploadImageSync(file, fileName) {
+export async function uploadImageSync(file, fileName, onProgress) {
   try {
     // Automatically compress the image to KB size before uploading to Cloudflare R2
     const compressed = await compressImage(file);
@@ -147,14 +147,38 @@ export async function uploadImageSync(file, fileName) {
     formData.append('file', compressed);
     formData.append('fileName', fileName);
 
-    const res = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/upload', true);
 
-    if (!res.ok) throw new Error('API request failed');
-    const data = await res.json();
-    return data; // { configured: boolean, success?: boolean, url?: string }
+      if (onProgress) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data);
+          } catch (e) {
+            resolve({ success: false, error: 'Malformed response JSON' });
+          }
+        } else {
+          resolve({ success: false, error: `Upload failed: status ${xhr.status}` });
+        }
+      };
+
+      xhr.onerror = () => {
+        resolve({ success: false, error: 'Network error occurred' });
+      };
+
+      xhr.send(formData);
+    });
   } catch (err) {
     console.error('Failed to upload image to R2 API:', err);
     return { configured: false };

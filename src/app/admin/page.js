@@ -182,6 +182,7 @@ export default function AdminPage() {
 
   // Notifications/Alerts
   const [alertMsg, setAlertMsg] = useState({ text: '', type: '' });
+  const [uploadProgress, setUploadProgress] = useState({ active: false, percent: 0, filename: '' });
 
   // Form & Modals States
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
@@ -337,161 +338,58 @@ export default function AdminPage() {
   }, []);
 
   const refreshData = async () => {
-    // 1. Fetch albums
-    const albumSync = await fetchAlbumsSync();
-    let a;
-    if (albumSync.configured) {
-      a = albumSync.albums || [];
-      // Seed any missing default albums
-      const defaults = mockStore.getAlbums();
-      let seededNew = false;
-      for (const alb of defaults) {
-        if (!a.some(x => x.id === alb.id)) {
-          console.log(`Seeding missing album ${alb.id} to D1 database...`);
-          await saveAlbumSync(alb);
-          seededNew = true;
-        }
-      }
-      if (seededNew) {
-        const updatedAlbums = await fetchAlbumsSync();
-        a = updatedAlbums.albums || [];
-      }
-      // Sync local cache
-      mockStore.setAlbums(a);
-    } else {
-      a = mockStore.getAlbums();
-    }
-    setAlbums(a);
+    try {
+      // Fetch all data sources in parallel to eliminate loading waterfalls
+      const [albumSync, portfolioSync, packageSync, teamSync, catSync, svcSync] = await Promise.all([
+        fetchAlbumsSync(),
+        fetchPortfolioSync(),
+        fetchPackagesSync(),
+        fetchTeamSync(),
+        fetchServiceCategoriesSync(),
+        fetchServicesSync()
+      ]);
 
-    // 2. Fetch portfolio
-    const portfolioSync = await fetchPortfolioSync();
-    let port;
-    if (portfolioSync.configured) {
-      port = portfolioSync.portfolio || [];
-      // Seed any missing default portfolio items
-      const defaults = mockStore.getPortfolio();
-      let seededNew = false;
-      for (const item of defaults) {
-        if (!port.some(x => x.id === item.id)) {
-          console.log(`Seeding missing portfolio item ${item.id} to D1 database...`);
-          await savePortfolioSync(item);
-          seededNew = true;
-        }
-      }
-      if (seededNew) {
-        const updatedPort = await fetchPortfolioSync();
-        port = updatedPort.portfolio || [];
-      }
-      mockStore.setPortfolio(port);
-    } else {
-      port = mockStore.getPortfolio();
-    }
-    setPortfolio(port);
+      const a = albumSync.configured ? (albumSync.albums || []) : mockStore.getAlbums();
+      const port = portfolioSync.configured ? (portfolioSync.portfolio || []) : mockStore.getPortfolio();
+      const pkgs = packageSync.configured ? (packageSync.packages || []) : mockStore.getPackages();
+      const teamList = teamSync.configured ? (teamSync.team || []) : mockStore.getTeam();
+      const cats = catSync.configured ? (catSync.categories || []) : mockStore.getServiceCategories();
+      const svcs = svcSync.configured ? (svcSync.services || []) : mockStore.getServices();
 
-    // 3. Fetch packages
-    const packageSync = await fetchPackagesSync();
-    let pkgs;
-    if (packageSync.configured) {
-      pkgs = packageSync.packages || [];
-      const defaults = mockStore.getPackages();
-      let seededNew = false;
-      for (const pkg of defaults) {
-        if (!pkgs.some(x => x.id === pkg.id)) {
-          console.log(`Seeding missing package ${pkg.id} to D1 database...`);
-          await savePackageSync(pkg);
-          seededNew = true;
-        }
-      }
-      if (seededNew) {
-        const updatedPkgs = await fetchPackagesSync();
-        pkgs = updatedPkgs.packages || [];
-      }
-      mockStore.setPackages(pkgs);
-    } else {
-      pkgs = mockStore.getPackages();
-    }
-    setPackages(pkgs);
+      // Update state instantly
+      setAlbums(a);
+      setPortfolio(port);
+      setPackages(pkgs);
+      setTeam(teamList);
+      setAdminCategories(cats);
+      setServices(svcs);
 
-    // 4. Fetch team members
-    const teamSync = await fetchTeamSync();
-    let teamList;
-    if (teamSync.configured) {
-      teamList = teamSync.team || [];
-      const defaults = mockStore.getTeam();
-      let seededNew = false;
-      for (const member of defaults) {
-        if (!teamList.some(x => x.id === member.id)) {
-          console.log(`Seeding missing team member ${member.id} to D1 database...`);
-          await saveTeamSync(member);
-          seededNew = true;
-        }
+      if (a.length > 0 && !selectedAlbumId) {
+        setSelectedAlbumId(a[0].id);
       }
-      if (seededNew) {
-        const updatedTeam = await fetchTeamSync();
-        teamList = updatedTeam.team || [];
-      }
-      mockStore.setTeam(teamList);
-    } else {
-      teamList = mockStore.getTeam();
-    }
-    setTeam(teamList);
-
-    // 5. Fetch service categories
-    const catSync = await fetchServiceCategoriesSync();
-    let cats;
-    if (catSync.configured) {
-      cats = catSync.categories || [];
-      const defaults = getServiceCategories();
-      let seededNew = false;
-      for (const cat of defaults) {
-        if (!cats.some(x => x.id === cat.id)) {
-          console.log(`Seeding missing category ${cat.id} to D1 database...`);
-          await saveServiceCategorySync(cat);
-          seededNew = true;
-        }
-      }
-      if (seededNew) {
-        const updatedCats = await fetchServiceCategoriesSync();
-        cats = updatedCats.categories || [];
-      }
-      mockStore.setServiceCategories(cats);
-    } else {
-      cats = mockStore.getServiceCategories();
-    }
-    setAdminCategories(cats);
-
-    // 6. Fetch flat services
-    const svcSync = await fetchServicesSync();
-    let svcs;
-    if (svcSync.configured) {
-      svcs = svcSync.services || [];
-      const defaults = mockStore.getServices();
-      let seededNew = false;
-      for (const svc of defaults) {
-        if (!svcs.some(x => x.id === svc.id)) {
-          console.log(`Seeding missing flat service ${svc.id} to D1 database...`);
-          await saveServiceSync(svc);
-          seededNew = true;
-        }
-      }
-      if (seededNew) {
-        const updatedSvcs = await fetchServicesSync();
-        svcs = updatedSvcs.services || [];
-      }
-      mockStore.setServices(svcs);
-    } else {
-      svcs = mockStore.getServices();
-    }
-    setServices(svcs);
-
-    if (a.length > 0 && !selectedAlbumId) {
-      setSelectedAlbumId(a[0].id);
+    } catch (err) {
+      console.error('Failed to load admin data in parallel:', err);
     }
   };
 
   const showAlert = (text, type = 'success') => {
     setAlertMsg({ text, type });
     setTimeout(() => setAlertMsg({ text: '', type: '' }), 4000);
+  };
+
+  const uploadWithProgress = async (file, name, typeLabel = 'File') => {
+    setUploadProgress({ active: true, percent: 0, filename: `${typeLabel} (${file.name})` });
+    try {
+      const res = await uploadImageSync(file, name, (percent) => {
+        setUploadProgress(prev => ({ ...prev, percent }));
+      });
+      return res;
+    } catch (e) {
+      console.error(e);
+      return { configured: false, success: false, error: e.message };
+    } finally {
+      setUploadProgress({ active: false, percent: 0, filename: '' });
+    }
   };
 
   // --- Service Category Actions ---
@@ -691,15 +589,17 @@ export default function AdminPage() {
       async () => {
         try {
           if (targetCategory) {
+            const deletePromises = [];
             if (targetCategory.image) {
-              await deleteImageSync(targetCategory.image);
+              deletePromises.push(deleteImageSync(targetCategory.image));
             }
             if (targetCategory.services) {
               for (const s of targetCategory.services) {
-                if (s.image) await deleteImageSync(s.image);
-                if (s.video) await deleteImageSync(s.video);
+                if (s.image) deletePromises.push(deleteImageSync(s.image));
+                if (s.video) deletePromises.push(deleteImageSync(s.video));
               }
             }
+            await Promise.all(deletePromises);
           }
           const res = await deleteServiceCategorySync(catId);
           let updated = adminCategories.filter(cat => cat.id !== catId);
@@ -831,8 +731,10 @@ export default function AdminPage() {
 
         const targetSvc = (targetCategory.services || []).find(s => s.id === svcId);
         if (targetSvc) {
-          if (targetSvc.image) await deleteImageSync(targetSvc.image);
-          if (targetSvc.video) await deleteImageSync(targetSvc.video);
+          await Promise.all([
+            targetSvc.image ? deleteImageSync(targetSvc.image) : Promise.resolve(),
+            targetSvc.video ? deleteImageSync(targetSvc.video) : Promise.resolve()
+          ]);
         }
 
         const updatedCategory = {
@@ -885,8 +787,8 @@ export default function AdminPage() {
         const thumbBlob = await createThumbnailBlob(file);
 
         // Upload to R2 if configured, else IndexedDB
-        const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-        const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+        const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newAlbumPhotosFiles.length}`);
 
         if (originalUpload.configured && thumbUpload.configured) {
           albumPhotos.push({
@@ -945,16 +847,18 @@ export default function AdminPage() {
       'Are you sure you want to delete this client album? All photo/video links inside will be removed.',
       async () => {
         if (album) {
+          const deletePromises = [];
           if (album.photos) {
             for (const p of album.photos) {
-              if (p.url) await deleteImageSync(p.url);
+              if (p.url) deletePromises.push(deleteImageSync(p.url));
             }
           }
           if (album.videos) {
             for (const v of album.videos) {
-              if (v.url) await deleteImageSync(v.url);
+              if (v.url) deletePromises.push(deleteImageSync(v.url));
             }
           }
+          await Promise.all(deletePromises);
         }
         const res = await deleteAlbumSync(id);
         if (res.configured) {
@@ -1052,8 +956,8 @@ export default function AdminPage() {
           const id = `user_uploaded_${Date.now()}_client_${i}_${Math.random().toString(36).substr(2, 9)}`;
           const thumbBlob = await createThumbnailBlob(file);
 
-          const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-          const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+          const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${clientFiles.length}`);
+          const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${clientFiles.length}`);
 
           if (originalUpload.configured && thumbUpload.configured) {
             albumPhotos.push({
@@ -1158,8 +1062,8 @@ export default function AdminPage() {
             const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
             const thumbBlob = await createThumbnailBlob(file);
 
-            const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-            const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+            const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newMediaFiles.length}`);
+            const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newMediaFiles.length}`);
 
             if (originalUpload.configured && thumbUpload.configured) {
               updatedPhotos.push({
@@ -2508,7 +2412,7 @@ export default function AdminPage() {
                               if (file) {
                                 file = await compressImage(file);
                                 const id = `user_uploaded_${Date.now()}_port_${Math.random().toString(36).substr(2, 9)}`;
-                                const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                                const originalUpload = await uploadWithProgress(file, `${id}.jpg`, 'Portfolio Image');
                                 if (originalUpload.configured) {
                                   setPortfolioForm({ ...portfolioForm, image: originalUpload.url });
                                   showAlert('Showcase photo file uploaded to R2!');
@@ -2548,7 +2452,7 @@ export default function AdminPage() {
                                   return;
                                 }
                                 const id = `user_uploaded_${Date.now()}_port_vid_${Math.random().toString(36).substr(2, 9)}`;
-                                const originalUpload = await uploadImageSync(file, `${id}.mp4`);
+                                const originalUpload = await uploadWithProgress(file, `${id}.mp4`, 'Portfolio Video');
                                 if (originalUpload.configured) {
                                   setPortfolioForm({ ...portfolioForm, video: originalUpload.url });
                                   showAlert('Showcase video file uploaded to R2!');
@@ -3831,7 +3735,7 @@ export default function AdminPage() {
                     if (file) {
                       file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_team_${Math.random().toString(36).substr(2, 9)}`;
-                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                      const originalUpload = await uploadWithProgress(file, `${id}.jpg`, 'Team Portrait');
                       if (originalUpload.configured) {
                         setTeamForm({ ...teamForm, image: originalUpload.url });
                         showAlert('Portrait photo uploaded to R2!');
@@ -3966,7 +3870,7 @@ export default function AdminPage() {
                     if (file) {
                       file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_spec_${Math.random().toString(36).substr(2, 9)}`;
-                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                      const originalUpload = await uploadWithProgress(file, `${id}.jpg`, 'Specialty Cover');
                       if (originalUpload.configured) {
                         setEditingSpecialty({ ...editingSpecialty, image: originalUpload.url });
                         showAlert('Specialty cover photo uploaded to R2!');
@@ -4137,8 +4041,8 @@ export default function AdminPage() {
                       file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_cat_${Math.random().toString(36).substr(2, 9)}`;
                       const thumbBlob = await createThumbnailBlob(file);
-                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-                      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+                      const originalUpload = await uploadWithProgress(file, `${id}.jpg`, 'Category Cover');
+                      const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, 'Category Thumbnail');
                       if (originalUpload.configured && thumbUpload.configured) {
                         setEditingCat({ ...editingCat, image: originalUpload.url });
                         showAlert('Category cover image uploaded to R2!');
@@ -4273,8 +4177,8 @@ export default function AdminPage() {
                       file = await compressImage(file);
                       const id = `user_uploaded_${Date.now()}_svc_${Math.random().toString(36).substr(2, 9)}`;
                       const thumbBlob = await createThumbnailBlob(file);
-                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
-                      const thumbUpload = await uploadImageSync(thumbBlob, `${id}_thumb.jpg`);
+                      const originalUpload = await uploadWithProgress(file, `${id}.jpg`, 'Service Cover');
+                      const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, 'Service Thumbnail');
                       if (originalUpload.configured && thumbUpload.configured) {
                         setEditingCatSvc({ ...editingCatSvc, image: originalUpload.url });
                         showAlert('Service cover image uploaded to R2!');
@@ -4317,7 +4221,7 @@ export default function AdminPage() {
                     const file = e.target.files[0];
                     if (file) {
                       const id = `user_uploaded_${Date.now()}_svc_vid_${Math.random().toString(36).substr(2, 9)}`;
-                      const originalUpload = await uploadImageSync(file, `${id}.mp4`);
+                      const originalUpload = await uploadWithProgress(file, `${id}.mp4`, 'Service Video');
                       if (originalUpload.configured) {
                         setEditingCatSvc({ ...editingCatSvc, video: originalUpload.url });
                         showAlert('Service video uploaded to R2!');
@@ -5951,6 +5855,62 @@ export default function AdminPage() {
           }
         }
       `}</style>
+
+      {/* ── Real-Time Upload Progress Indicator Overlay ── */}
+      {uploadProgress.active && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          backgroundColor: '#1e1e24',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '16px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)',
+          zIndex: 999999,
+          width: '320px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          fontFamily: 'Inter, system-ui, sans-serif'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>
+              Uploading Media...
+            </span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#f97316' }}>
+              {uploadProgress.percent}%
+            </span>
+          </div>
+
+          <div style={{
+            fontSize: '0.75rem',
+            color: 'rgba(255,255,255,0.6)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            {uploadProgress.filename}
+          </div>
+
+          {/* Progress Bar Container */}
+          <div style={{
+            width: '100%',
+            height: '8px',
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${uploadProgress.percent}%`,
+              height: '100%',
+              backgroundColor: '#f97316',
+              borderRadius: '4px',
+              transition: 'width 0.2s ease-out'
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
