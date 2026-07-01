@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Star,
@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { mockStore } from '@/utils/mockStore';
 import { getServiceCategories, setServiceCategories } from '@/utils/servicesData';
-import { saveMediaBlob, useResolvedImage, createThumbnailBlob, useResponsiveResolvedImages } from '@/utils/indexedDBStore';
+import { saveMediaBlob, useResolvedImage, createThumbnailBlob } from '@/utils/indexedDBStore';
 import {
   fetchAlbumsSync,
   saveAlbumSync,
@@ -63,29 +63,12 @@ import {
   deleteServiceSync,
   compressImage
 } from '@/utils/dbSync';
-import CropModal from '@/components/CropModal';
 
 function SafeImage({ src, alt, className, style, onDragStart, isThumbnail = false }) {
-  const { isResponsive, desktop, mobile } = useResponsiveResolvedImages(src, isThumbnail);
-  if (isResponsive) {
-    return (
-      <picture style={{ display: 'contents' }}>
-        <source media="(max-width: 768px)" srcSet={mobile} />
-        <img
-          src={desktop}
-          alt={alt}
-          className={className}
-          style={style}
-          onDragStart={onDragStart}
-          loading="lazy"
-          decoding="async"
-        />
-      </picture>
-    );
-  }
+  const resolved = useResolvedImage(src, isThumbnail);
   return (
     <img
-      src={desktop}
+      src={resolved}
       alt={alt}
       className={className}
       style={style}
@@ -200,9 +183,6 @@ export default function AdminPage() {
   // Notifications/Alerts
   const [alertMsg, setAlertMsg] = useState({ text: '', type: '' });
   const [uploadProgress, setUploadProgress] = useState({ active: false, percent: 0, filename: '' });
-
-  // Crop modal state
-  const [cropModal, setCropModal] = useState({ open: false, file: null, aspectRatio: null, resolve: null, reject: null });
 
   // Form & Modals States
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
@@ -412,37 +392,7 @@ export default function AdminPage() {
     }
   };
 
-  /**
-   * requestCrop — opens CropModal for a given file.
-   * Returns { desktop: Blob, mobile: Blob } if user saves, or null if cancelled.
-   * When aspectRatio is null the user can freely crop.
-   */
-  const requestCrop = useCallback((file, aspectRatio = null) => {
-    return new Promise((resolve) => {
-      setCropModal({
-        open: true,
-        file,
-        aspectRatio,
-        resolve,
-        reject: () => resolve(null)
-      });
-    });
-  }, []);
-
-  const handleCropSave = useCallback(async (desktopBlob, mobileBlob) => {
-    setCropModal(prev => {
-      if (prev.resolve) prev.resolve({ desktop: desktopBlob, mobile: mobileBlob });
-      return { open: false, file: null, aspectRatio: null, resolve: null, reject: null };
-    });
-  }, []);
-
-  const handleCropCancel = useCallback(() => {
-    setCropModal(prev => {
-      if (prev.reject) prev.reject();
-      return { open: false, file: null, aspectRatio: null, resolve: null, reject: null };
-    });
-  }, []);
-
+  // --- Service Category Actions ---
   const handleAddNewCategoryClick = () => {
     setEditingCat({
       id: '',
@@ -831,43 +781,32 @@ export default function AdminPage() {
     let albumPhotos = [];
     if (newAlbumPhotosFiles && newAlbumPhotosFiles.length > 0) {
       for (let i = 0; i < newAlbumPhotosFiles.length; i++) {
-        const rawFile = newAlbumPhotosFiles[i];
-
-        // Smart crop before upload
-        const cropped = await requestCrop(rawFile, null);
-        if (!cropped) continue; // skipped by user
-
-        let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
-        let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
+        let file = newAlbumPhotosFiles[i];
+        file = await compressImage(file);
         const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
+        const thumbBlob = await createThumbnailBlob(file);
 
         // Upload to R2 if configured, else IndexedDB
-        const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${newAlbumPhotosFiles.length}`);
-        const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${newAlbumPhotosFiles.length}`);
-        const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newAlbumPhotosFiles.length}`);
+        const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newAlbumPhotosFiles.length}`);
 
         if (originalUpload.configured && thumbUpload.configured) {
-          const responsiveUrl = mobileUpload.configured
-            ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
-            : originalUpload.url;
           albumPhotos.push({
             id: i + 1,
-            title: rawFile.name.split('.')[0],
-            url: responsiveUrl
+            title: file.name.split('.')[0],
+            url: originalUpload.url
           });
         } else {
-          await saveMediaBlob(id, cropped.desktop);
-          await saveMediaBlob(`${id}_mobile`, cropped.mobile);
-          await saveMediaBlob(`${id}_thumb`, cropped.mobile);
+          await saveMediaBlob(id, file);
+          await saveMediaBlob(`${id}_thumb`, thumbBlob);
           albumPhotos.push({
             id: i + 1,
-            title: rawFile.name.split('.')[0],
+            title: file.name.split('.')[0],
             url: `indexeddb://${id}`
           });
         }
       }
     }
-
 
     const newAlb = {
       id: code.toLowerCase(),
@@ -1012,42 +951,31 @@ export default function AdminPage() {
       let albumPhotos = [];
       if (clientFiles && clientFiles.length > 0) {
         for (let i = 0; i < clientFiles.length; i++) {
-          const rawFile = clientFiles[i];
-
-          // Smart crop before upload
-          const cropped = await requestCrop(rawFile, null);
-          if (!cropped) continue; // skipped by user
-
-          let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
-          let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
+          let file = clientFiles[i];
+          file = await compressImage(file);
           const id = `user_uploaded_${Date.now()}_client_${i}_${Math.random().toString(36).substr(2, 9)}`;
+          const thumbBlob = await createThumbnailBlob(file);
 
-          const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${clientFiles.length}`);
-          const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${clientFiles.length}`);
-          const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${clientFiles.length}`);
+          const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${clientFiles.length}`);
+          const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${clientFiles.length}`);
 
           if (originalUpload.configured && thumbUpload.configured) {
-            const responsiveUrl = mobileUpload.configured
-              ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
-              : originalUpload.url;
             albumPhotos.push({
               id: i + 1,
-              title: rawFile.name.split('.')[0],
-              url: responsiveUrl
+              title: file.name.split('.')[0],
+              url: originalUpload.url
             });
           } else {
-            await saveMediaBlob(id, cropped.desktop);
-            await saveMediaBlob(`${id}_mobile`, cropped.mobile);
-            await saveMediaBlob(`${id}_thumb`, cropped.mobile);
+            await saveMediaBlob(id, file);
+            await saveMediaBlob(`${id}_thumb`, thumbBlob);
             albumPhotos.push({
               id: i + 1,
-              title: rawFile.name.split('.')[0],
+              title: file.name.split('.')[0],
               url: `indexeddb://${id}`
             });
           }
         }
       }
-
       const newAlb = {
         id: code.toLowerCase(),
         eventCode: code,
@@ -1122,50 +1050,33 @@ export default function AdminPage() {
             return;
           }
         }
-        
+
         setMediaUploading(true);
         setMediaUploadedCount(0);
-        
+
         try {
-          // Upload multiple files with smart crop step
+          // Upload multiple files
           for (let i = 0; i < newMediaFiles.length; i++) {
-            const rawFile = newMediaFiles[i];
-
-            // Open smart crop modal — user can adjust or cancel
-            const cropped = await requestCrop(rawFile, null);
-            if (!cropped) {
-              // User cancelled this file — skip it
-              setMediaUploadedCount(i + 1);
-              continue;
-            }
-
-            // Use the desktop blob as the primary upload; mobile blob as thumbnail
-            let desktopFile = new File([cropped.desktop], rawFile.name, { type: 'image/jpeg' });
-            let mobileFile = new File([cropped.mobile], rawFile.name.replace(/\.[^.]+$/, '_mobile.jpg'), { type: 'image/jpeg' });
-
+            let file = newMediaFiles[i];
+            file = await compressImage(file);
             const id = `user_uploaded_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 9)}`;
+            const thumbBlob = await createThumbnailBlob(file);
 
-            const originalUpload = await uploadWithProgress(desktopFile, `${id}.jpg`, `Photo ${i + 1}/${newMediaFiles.length}`);
-            const mobileUpload = await uploadWithProgress(mobileFile, `${id}_mobile.jpg`, `Mobile ${i + 1}/${newMediaFiles.length}`);
-            const thumbUpload = await uploadWithProgress(cropped.mobile, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newMediaFiles.length}`);
+            const originalUpload = await uploadWithProgress(file, `${id}.jpg`, `Photo ${i + 1}/${newMediaFiles.length}`);
+            const thumbUpload = await uploadWithProgress(thumbBlob, `${id}_thumb.jpg`, `Thumbnail ${i + 1}/${newMediaFiles.length}`);
 
             if (originalUpload.configured && thumbUpload.configured) {
-              // Store as responsive JSON so <picture> tag serves correct size
-              const responsiveUrl = mobileUpload.configured
-                ? JSON.stringify({ desktop: originalUpload.url, mobile: mobileUpload.url })
-                : originalUpload.url;
               updatedPhotos.push({
                 id: startId + i,
-                title: rawFile.name.split('.')[0],
-                url: responsiveUrl
+                title: file.name.split('.')[0],
+                url: originalUpload.url
               });
             } else {
-              await saveMediaBlob(id, cropped.desktop);
-              await saveMediaBlob(`${id}_mobile`, cropped.mobile);
-              await saveMediaBlob(`${id}_thumb`, cropped.mobile);
+              await saveMediaBlob(id, file);
+              await saveMediaBlob(`${id}_thumb`, thumbBlob);
               updatedPhotos.push({
                 id: startId + i,
-                title: rawFile.name.split('.')[0],
+                title: file.name.split('.')[0],
                 url: `indexeddb://${id}`
               });
             }
@@ -1841,18 +1752,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin-page-wrapper">
-      {/* Smart Crop Modal — shown when uploading images */}
-      {cropModal.open && (
-        <CropModal
-          file={cropModal.file}
-          aspectRatio={cropModal.aspectRatio}
-          onSave={handleCropSave}
-          onCancel={handleCropCancel}
-          title="Smart Crop Image"
-        />
-      )}
       {/* Admin Container */}
-
       <section className="admin-main-section section-padding">
         <div className="admin-container">
 
@@ -2268,17 +2168,17 @@ export default function AdminPage() {
                                 </div>
                               )}
 
-                              <button 
-                                type="submit" 
-                                className="btn btn-secondary btn-block" 
+                              <button
+                                type="submit"
+                                className="btn btn-secondary btn-block"
                                 disabled={mediaUploading}
-                                style={{ 
-                                  marginTop: '1.25rem', 
-                                  height: '44px', 
-                                  borderRadius: '10px', 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'center', 
+                                style={{
+                                  marginTop: '1.25rem',
+                                  height: '44px',
+                                  borderRadius: '10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                   gap: '0.5rem',
                                   opacity: mediaUploading ? 0.7 : 1,
                                   cursor: mediaUploading ? 'not-allowed' : 'pointer'
@@ -2608,7 +2508,7 @@ export default function AdminPage() {
               {activeTab === 'homepage-specialties' && (
                 <div className="tab-pane animate-fade-in">
                   <div className="booking-split-view">
-                    
+
                     {/* List Grid */}
                     <div className="booking-list-panel glass-card etech-curve" style={{ width: '100%', maxWidth: '100%', flex: '1 1 100%', padding: '2rem' }}>
                       <div style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '1.25rem', marginBottom: '1.5rem' }}>
@@ -2632,7 +2532,7 @@ export default function AdminPage() {
                               <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0, lineClamp: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '3.6em' }}>
                                 {svc.desc}
                               </p>
-                              
+
                               <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div style={{ fontSize: '0.8rem', color: '#4b5563' }}>
                                   <strong>Features:</strong>
@@ -2643,7 +2543,7 @@ export default function AdminPage() {
                                     {(svc.features || []).length > 3 && <li>+ {(svc.features || []).length - 3} more</li>}
                                   </ul>
                                 </div>
-                                
+
                                 <button
                                   onClick={() => handleEditSpecialty(svc)}
                                   className="btn btn-outline btn-sm"
@@ -2803,11 +2703,11 @@ export default function AdminPage() {
                         onDrop={(e) => {
                           e.preventDefault();
                           const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-                           const maxSize = 15 * 1024 * 1024;
-                           const invalidFiles = files.filter(f => f.size > maxSize);
-                           if (invalidFiles.length > 0) {
-                             const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
-                             showAlert(`Error: The following file(s) exceed the 15 MB limit and were rejected: ${names}`, 'danger');
+                          const maxSize = 15 * 1024 * 1024;
+                          const invalidFiles = files.filter(f => f.size > maxSize);
+                          if (invalidFiles.length > 0) {
+                            const names = invalidFiles.map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(2)} MB)`).join(', ');
+                            showAlert(`Error: The following file(s) exceed the 15 MB limit and were rejected: ${names}`, 'danger');
                             return;
                           }
                           setClientFiles(files);
@@ -3182,7 +3082,7 @@ export default function AdminPage() {
                   <div className="categories-management-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
                     {adminCategories.map(cat => (
                       <div key={cat.id} className="category-admin-card glass-card etech-curve" style={{ padding: '30px', border: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
-                        
+
                         {/* Category Header Info */}
                         <div className="category-admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '20px', marginBottom: '20px' }}>
                           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
@@ -3223,7 +3123,7 @@ export default function AdminPage() {
 
                         {/* Category Services Grid */}
                         <h5 style={{ fontSize: '14px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--fg-muted)', marginBottom: '15px' }}>Services inside category</h5>
-                        
+
                         {(!cat.services || cat.services.length === 0) ? (
                           <p style={{ fontStyle: 'italic', color: 'var(--fg-muted)', fontSize: '13.5px', padding: '15px 0' }}>No services in this category. Click "Add Service" above to create one.</p>
                         ) : (
@@ -3238,7 +3138,7 @@ export default function AdminPage() {
                                 </div>
                                 <div style={{ padding: '15px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                                   <h6 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--fg-main)', margin: '0 0 10px 0' }}>{svc.name}</h6>
-                                  
+
                                   {svc.subServices && svc.subServices.length > 0 && (
                                     <div style={{ flexGrow: 1 }}>
                                       <span style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', color: 'var(--fg-muted)', display: 'block', marginBottom: '5px' }}>Sub-services:</span>
@@ -4136,7 +4036,7 @@ export default function AdminPage() {
                 />
               </div>
 
-               <div className="form-group">
+              <div className="form-group">
                 <label className="form-label">Category Image Preview</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
                   <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
@@ -4272,7 +4172,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-               <div className="form-group">
+              <div className="form-group">
                 <label className="form-label">Service Image Preview</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
                   <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
