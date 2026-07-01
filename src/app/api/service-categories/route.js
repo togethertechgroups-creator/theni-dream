@@ -1,22 +1,36 @@
 import { executeD1Query } from '@/utils/d1Client';
+import { isPostgresConfigured, executeQuery } from '@/utils/postgresClient';
 import { NextResponse } from 'next/server';
 
 async function initTable() {
-  await executeD1Query(`
-    CREATE TABLE IF NOT EXISTS service_categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      desc TEXT,
-      price TEXT,
-      image TEXT,
-      services TEXT
-    )
-  `);
+  if (isPostgresConfigured()) {
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS service_categories (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        "desc" TEXT,
+        price VARCHAR(255),
+        image TEXT,
+        services TEXT
+      )
+    `);
+  } else {
+    await executeD1Query(`
+      CREATE TABLE IF NOT EXISTS service_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        desc TEXT,
+        price TEXT,
+        image TEXT,
+        services TEXT
+      )
+    `);
+  }
 }
 
 export async function GET() {
   await initTable();
-  const dbResult = await executeD1Query("SELECT * FROM service_categories");
+  const dbResult = await executeQuery("SELECT * FROM service_categories");
   if (!dbResult) {
     return NextResponse.json({ configured: false });
   }
@@ -35,19 +49,44 @@ export async function POST(req) {
     if (!id || !name) {
       return NextResponse.json({ success: false, error: 'Missing category id or name' }, { status: 400 });
     }
-    const sql = `
-      INSERT OR REPLACE INTO service_categories (id, name, desc, price, image, services)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    const params = [
-      id,
-      name,
-      desc || '',
-      price || '',
-      image || '',
-      JSON.stringify(services || [])
-    ];
-    const dbResult = await executeD1Query(sql, params);
+
+    let dbResult;
+    if (isPostgresConfigured()) {
+      const sql = `
+        INSERT INTO service_categories (id, name, "desc", price, image, services)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          "desc" = EXCLUDED.desc,
+          price = EXCLUDED.price,
+          image = EXCLUDED.image,
+          services = EXCLUDED.services
+      `;
+      const params = [
+        id,
+        name,
+        desc || '',
+        price || '',
+        image || '',
+        JSON.stringify(services || [])
+      ];
+      dbResult = await executeQuery(sql, params);
+    } else {
+      const sql = `
+        INSERT OR REPLACE INTO service_categories (id, name, desc, price, image, services)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      const params = [
+        id,
+        name,
+        desc || '',
+        price || '',
+        image || '',
+        JSON.stringify(services || [])
+      ];
+      dbResult = await executeD1Query(sql, params);
+    }
+
     if (!dbResult) {
       return NextResponse.json({ success: false, error: 'Database query failed or not configured' }, { status: 500 });
     }
@@ -65,7 +104,7 @@ export async function DELETE(req) {
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing id parameter' }, { status: 400 });
     }
-    const dbResult = await executeD1Query("DELETE FROM service_categories WHERE id = ?", [id]);
+    const dbResult = await executeQuery("DELETE FROM service_categories WHERE id = ?", [id]);
     if (!dbResult) {
       return NextResponse.json({ success: false, error: 'Database query failed or not configured' }, { status: 500 });
     }
