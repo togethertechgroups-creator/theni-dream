@@ -11,9 +11,15 @@ async function initTable() {
         category VARCHAR(255) NOT NULL,
         image TEXT,
         video TEXT,
-        albumId VARCHAR(255)
+        "albumId" VARCHAR(255)
       )
     `);
+    try {
+      await executeQuery('ALTER TABLE portfolio ADD COLUMN video TEXT');
+    } catch (e) {}
+    try {
+      await executeQuery('ALTER TABLE portfolio ADD COLUMN "albumId" VARCHAR(255)');
+    } catch (e) {}
   } else {
     await executeD1Query(`
       CREATE TABLE IF NOT EXISTS portfolio (
@@ -27,9 +33,10 @@ async function initTable() {
     `);
     try {
       await executeD1Query("ALTER TABLE portfolio ADD COLUMN video TEXT");
-    } catch (e) {
-      // Column might already exist
-    }
+    } catch (e) {}
+    try {
+      await executeD1Query("ALTER TABLE portfolio ADD COLUMN albumId TEXT");
+    } catch (e) {}
   }
 }
 
@@ -53,37 +60,41 @@ export async function POST(req) {
     if (isPostgresConfigured()) {
       if (id) {
         const sql = `
-          INSERT INTO portfolio (id, title, category, image, video, albumId)
+          INSERT INTO portfolio (id, title, category, image, video, "albumId")
           VALUES ($1, $2, $3, $4, $5, $6)
           ON CONFLICT (id) DO UPDATE SET
             title = EXCLUDED.title,
             category = EXCLUDED.category,
             image = EXCLUDED.image,
             video = EXCLUDED.video,
-            albumId = EXCLUDED.albumId
+            "albumId" = EXCLUDED."albumId"
         `;
-        dbResult = await executeQuery(sql, [id, title || '', category || 'Wedding', image || '', video || '', albumId || null]);
+        const params = [id, title || '', category || 'Wedding', image || '', video || '', albumId || null];
+        dbResult = await executeQuery(sql, params);
       } else {
         const sql = `
-          INSERT INTO portfolio (title, category, image, video, albumId)
+          INSERT INTO portfolio (title, category, image, video, "albumId")
           VALUES ($1, $2, $3, $4, $5)
         `;
-        dbResult = await executeQuery(sql, [title || '', category || 'Wedding', image || '', video || '', albumId || null]);
+        const params = [title || '', category || 'Wedding', image || '', video || '', albumId || null];
+        dbResult = await executeQuery(sql, params);
       }
     } else {
+      let sql, params;
       if (id) {
-        const sql = `
+        sql = `
           INSERT OR REPLACE INTO portfolio (id, title, category, image, video, albumId)
           VALUES (?, ?, ?, ?, ?, ?)
         `;
-        dbResult = await executeD1Query(sql, [id, title || '', category || 'Wedding', image || '', video || '', albumId || null]);
+        params = [id, title || '', category || 'Wedding', image || '', video || '', albumId || null];
       } else {
-        const sql = `
+        sql = `
           INSERT INTO portfolio (title, category, image, video, albumId)
           VALUES (?, ?, ?, ?, ?)
         `;
-        dbResult = await executeD1Query(sql, [title || '', category || 'Wedding', image || '', video || '', albumId || null]);
+        params = [title || '', category || 'Wedding', image || '', video || '', albumId || null];
       }
+      dbResult = await executeD1Query(sql, params);
     }
 
     if (!dbResult) {
@@ -113,3 +124,4 @@ export async function DELETE(req) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
