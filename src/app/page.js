@@ -51,6 +51,16 @@ export default function Home() {
   const [selectedService, setSelectedService] = useState(null);
 
   useEffect(() => {
+    // Reset scroll restoration to manual and force scroll to top on reload/mount
+    if (typeof window !== 'undefined') {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, []);
+
+  useEffect(() => {
     const loadServices = async () => {
       const res = await fetchServicesSync();
       if (res.configured && res.services && res.services.length > 0) {
