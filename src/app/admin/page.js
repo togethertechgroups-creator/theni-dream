@@ -1299,8 +1299,8 @@ export default function AdminPage() {
       showAlert('Portfolio item title is required.', 'danger');
       return;
     }
-    if (!editingPortfolioId && portfolio.length >= 40) {
-      showAlert('Only 40 pictures are allowed in the Showcase Gallery!', 'danger');
+    if (!editingPortfolioId && portfolio.length >= 100) {
+      showAlert('Only 100 pictures are allowed in the Showcase Gallery!', 'danger');
       return;
     }
     if (editingPortfolioId) {
@@ -2412,8 +2412,8 @@ export default function AdminPage() {
                             accept="image/*"
                             className="form-control"
                             onChange={async (e) => {
-                              if (!editingPortfolioId && portfolio.length >= 40) {
-                                showAlert('Only 40 pictures are allowed in the Showcase Gallery!', 'danger');
+                              if (!editingPortfolioId && portfolio.length >= 100) {
+                                showAlert('Only 100 pictures are allowed in the Showcase Gallery!', 'danger');
                                 e.target.value = '';
                                 return;
                               }
@@ -2451,8 +2451,8 @@ export default function AdminPage() {
                             accept="video/*"
                             className="form-control"
                             onChange={async (e) => {
-                              if (!editingPortfolioId && portfolio.length >= 40) {
-                                showAlert('Only 40 pictures are allowed in the Showcase Gallery!', 'danger');
+                              if (!editingPortfolioId && portfolio.length >= 100) {
+                                showAlert('Only 100 pictures are allowed in the Showcase Gallery!', 'danger');
                                 e.target.value = '';
                                 return;
                               }
