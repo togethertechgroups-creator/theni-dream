@@ -200,6 +200,10 @@ export default function AdminPage() {
   const [isCatSvcFormOpen, setIsCatSvcFormOpen] = useState(false);
   const [editingCatSvc, setEditingCatSvc] = useState(null);
   const [selectedCatId, setSelectedCatId] = useState('');
+
+  // Homepage Specialty Management State
+  const [editingSpecialty, setEditingSpecialty] = useState(null);
+  const [isSpecialtyModalOpen, setIsSpecialtyModalOpen] = useState(false);
   const [categoryImageFile, setCategoryImageFile] = useState(null);
   const [catServiceImageFile, setCatServiceImageFile] = useState(null);
   const [catServiceVideoFile, setCatServiceVideoFile] = useState(null);
@@ -501,6 +505,57 @@ export default function AdminPage() {
     });
     setCategoryImageFile(null);
     setIsCatFormOpen(true);
+  };
+
+  const handleEditSpecialty = (svc) => {
+    setEditingSpecialty({
+      ...svc,
+      featuresText: svc.features ? svc.features.join('\n') : ''
+    });
+    setIsSpecialtyModalOpen(true);
+  };
+
+  const handleSaveSpecialty = async (e) => {
+    e.preventDefault();
+    if (!editingSpecialty.name || !editingSpecialty.price) {
+      showAlert('Specialty Name and Price are required.', 'danger');
+      return;
+    }
+
+    let featuresList = [];
+    if (editingSpecialty.featuresText) {
+      featuresList = editingSpecialty.featuresText.split('\n').map(f => f.trim()).filter(Boolean);
+    }
+
+    const updatedSvc = {
+      id: editingSpecialty.id,
+      name: editingSpecialty.name,
+      price: editingSpecialty.price,
+      desc: editingSpecialty.desc || '',
+      image: editingSpecialty.image || '',
+      video: editingSpecialty.video || '',
+      features: featuresList
+    };
+
+    let updatedServices = services.map(s => s.id === editingSpecialty.id ? updatedSvc : s);
+
+    try {
+      const res = await saveServiceSync(updatedSvc);
+      if (res.configured) {
+        const updatedRes = await fetchServicesSync();
+        if (updatedRes.configured) {
+          updatedServices = updatedRes.services;
+        }
+      }
+      setServices(updatedServices);
+      mockStore.setServices(updatedServices);
+      setIsSpecialtyModalOpen(false);
+      setEditingSpecialty(null);
+      showAlert('Homepage specialty updated successfully!');
+    } catch (err) {
+      console.error(err);
+      showAlert('Failed to save homepage specialty.', 'danger');
+    }
   };
 
   const syncFlatServices = async (categories) => {
@@ -1754,6 +1809,16 @@ export default function AdminPage() {
                     <span>Portfolio page showcase</span>
                   </button>
                   <button
+                    className={`menu-btn ${activeTab === 'homepage-specialties' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveTab('homepage-specialties');
+                      setSelectedAlbumId('');
+                    }}
+                  >
+                    <Sparkles size={18} />
+                    <span>Home Page Specialty</span>
+                  </button>
+                  <button
                     className={`menu-btn ${activeTab === 'galleries' ? 'active' : ''}`}
                     onClick={() => {
                       setActiveTab('galleries');
@@ -2404,6 +2469,63 @@ export default function AdminPage() {
                           </button>
                         )}
                       </form>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* --- TAB: HOMEPAGE SPECIALTIES --- */}
+              {activeTab === 'homepage-specialties' && (
+                <div className="tab-pane animate-fade-in">
+                  <div className="booking-split-view">
+                    
+                    {/* List Grid */}
+                    <div className="booking-list-panel glass-card etech-curve" style={{ width: '100%', maxWidth: '100%', flex: '1 1 100%' }}>
+                      <div className="flex-between" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                        <h3 className="pane-subtitle serif-font" style={{ margin: 0 }}>Homepage Specialty Show</h3>
+                        <p style={{ color: 'var(--fg-muted)', fontSize: '0.9rem', margin: 0 }}>Manage the 6 specialty items displayed in the sticky split-reveal section on the home page.</p>
+                      </div>
+
+                      <div className="admin-media-thumb-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        {services.map((svc) => (
+                          <div key={svc.id} className="media-thumb-card glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px' }}>
+                            <div style={{ position: 'relative', height: '180px', width: '100%', overflow: 'hidden', borderRadius: '8px 8px 0 0' }}>
+                              <SafeImage src={svc.image} alt={svc.name} style={{ height: '100%', width: '100%', objectFit: 'cover' }} isThumbnail={true} />
+                              <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>
+                                ₹{svc.price}
+                              </div>
+                            </div>
+                            <div className="media-thumb-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '1rem', gap: '0.5rem', alignItems: 'stretch' }}>
+                              <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#1f2937' }}>{svc.name}</h4>
+                              <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0, lineClamp: 3, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '3.6em' }}>
+                                {svc.desc}
+                              </p>
+                              
+                              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                                  <strong>Features:</strong>
+                                  <ul style={{ margin: '4px 0 0 16px', padding: 0, listStyleType: 'disc' }}>
+                                    {(svc.features || []).slice(0, 3).map((f, idx) => (
+                                      <li key={idx}>{f}</li>
+                                    ))}
+                                    {(svc.features || []).length > 3 && <li>+ {(svc.features || []).length - 3} more</li>}
+                                  </ul>
+                                </div>
+                                
+                                <button
+                                  onClick={() => handleEditSpecialty(svc)}
+                                  className="btn btn-outline btn-sm"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', marginTop: '10px' }}
+                                >
+                                  <Edit2 size={14} />
+                                  <span>Edit Specialty Details</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                   </div>
@@ -3634,6 +3756,139 @@ export default function AdminPage() {
                     setIsTeamFormOpen(false);
                     setEditingTeamId('');
                     setTeamForm({ name: '', role: '', bio: '', image: '/pic/pic-5.png' });
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Homepage Specialty Modal Form */}
+      {isSpecialtyModalOpen && editingSpecialty && (
+        <div className="modal-backdrop" onClick={() => {
+          setIsSpecialtyModalOpen(false);
+          setEditingSpecialty(null);
+        }}>
+          <div className="modal-container glass-card etech-curve" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title serif-font">Edit Specialty Details</h3>
+              <button className="modal-close-btn" onClick={() => {
+                setIsSpecialtyModalOpen(false);
+                setEditingSpecialty(null);
+              }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSpecialty} className="admin-form" style={{ padding: '1.5rem 2rem 2rem 2rem' }}>
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Specialty Title *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Wedding Photography"
+                    value={editingSpecialty.name}
+                    onChange={(e) => setEditingSpecialty({ ...editingSpecialty, name: e.target.value })}
+                    required
+                    style={{ height: '44px', borderRadius: '10px', padding: '0 14px', width: '100%' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Starting Price *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. 9,999"
+                    value={editingSpecialty.price}
+                    onChange={(e) => setEditingSpecialty({ ...editingSpecialty, price: e.target.value })}
+                    required
+                    style={{ height: '44px', borderRadius: '10px', padding: '0 14px', width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description *</label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  placeholder="Specialty description..."
+                  value={editingSpecialty.desc}
+                  onChange={(e) => setEditingSpecialty({ ...editingSpecialty, desc: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Cover Image Preview</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                    <SafeImage src={editingSpecialty.image || '/pic/services/events.png'} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} isThumbnail={true} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280', wordBreak: 'break-all' }}>Current path: {editingSpecialty.image}</span>
+                </div>
+
+                <label className="form-label">Custom Image URL</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Custom Image URL"
+                  value={editingSpecialty.image}
+                  onChange={(e) => setEditingSpecialty({ ...editingSpecialty, image: e.target.value })}
+                  style={{ height: '44px', borderRadius: '10px', padding: '0 14px', width: '100%' }}
+                />
+
+                <label className="form-label" style={{ marginTop: '0.75rem' }}>Or Choose Photo File</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="form-control"
+                  onChange={async (e) => {
+                    let file = e.target.files[0];
+                    if (file) {
+                      file = await compressImage(file);
+                      const id = `user_uploaded_${Date.now()}_spec_${Math.random().toString(36).substr(2, 9)}`;
+                      const originalUpload = await uploadImageSync(file, `${id}.jpg`);
+                      if (originalUpload.configured) {
+                        setEditingSpecialty({ ...editingSpecialty, image: originalUpload.url });
+                        showAlert('Specialty cover photo uploaded to R2!');
+                      } else {
+                        await saveMediaBlob(id, file);
+                        setEditingSpecialty({ ...editingSpecialty, image: `indexeddb://${id}` });
+                        showAlert('Specialty cover photo uploaded locally & ready!');
+                      }
+                    }
+                  }}
+                  style={{ height: 'auto', borderRadius: '10px', padding: '10px', width: '100%' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Features / Bullet Points (One per line)</label>
+                <textarea
+                  className="form-control font-mono"
+                  rows="4"
+                  placeholder={"1 Senior Photographer\nHigh-Resolution Edited Digital Files\nFull Event Coverages"}
+                  value={editingSpecialty.featuresText}
+                  onChange={(e) => setEditingSpecialty({ ...editingSpecialty, featuresText: e.target.value })}
+                />
+              </div>
+
+              <div className="form-row-2" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+                <button type="submit" className="btn btn-primary btn-block">
+                  <Check size={16} /> Save Specialty
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-block"
+                  onClick={() => {
+                    setIsSpecialtyModalOpen(false);
+                    setEditingSpecialty(null);
                   }}
                 >
                   Cancel
